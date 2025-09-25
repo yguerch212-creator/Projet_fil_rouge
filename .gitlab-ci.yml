@@ -1,18 +1,30 @@
 stages: [lint]
 
+variables:
+  LUA_DIR: "addons/strategic_war_board/lua"
+
 lint_swb:
   stage: lint
   image: alpine:3.20
   before_script:
-    - apk add --no-cache lua5.4 lua5.4-dev luarocks grep
+    - apk add --no-cache lua5.4 lua5.4-dev luarocks git grep
     - luarocks install luacheck
   script:
-    - luacheck addons/strategic_war_board/lua
+    # 1) Lint syntaxe/style
+    - luacheck $LUA_DIR
+
+    # 2) Scan rapide anti-backdoor (basique, à raffiner)
+    - echo "Scanning suspicious patterns..."
     - |
-      echo "Scan backdoor basique…"
-      SUSP=$(grep -RniE "RunString|CompileString|loadstring|setfenv|getfenv|http\.Fetch|file\.Write|file\.Open\(\".*data|net\.Receive\(\"" addons/strategic_war_board/lua || true)
-      if [ -n "$SUSP" ]; then
-        echo "$SUSP"
-        # pour l’instant: warning seulement (pas d’échec de job)
+      SUSPICIOUS=$(grep -RniE "RunString|CompileString|setfenv|getfenv|loadstring|http\\.Fetch|file\\.Write|file\\.Open\\(\".*data|net\\.Receive\\(\".*\"\\)" $LUA_DIR || true)
+      if [ -n "$SUSPICIOUS" ]; then
+        echo "Potentially dangerous patterns found:"
+        echo "$SUSPICIOUS"
+        # On n'échoue pas encore le job pour éviter les faux-positifs au tout début.
         # exit 1
+      else
+        echo "No suspicious patterns found."
       fi
+  only:
+    - branches
+    - merge_requests
