@@ -1,1 +1,18 @@
+stages: [lint]
 
+lint_swb:
+  stage: lint
+  image: alpine:3.20
+  before_script:
+    - apk add --no-cache lua5.4 lua5.4-dev luarocks grep
+    - luarocks install luacheck
+  script:
+    - luacheck addons/strategic_war_board/lua
+    - |
+      echo "Scan backdoor basique…"
+      SUSP=$(grep -RniE "RunString|CompileString|loadstring|setfenv|getfenv|http\.Fetch|file\.Write|file\.Open\(\".*data|net\.Receive\(\"" addons/strategic_war_board/lua || true)
+      if [ -n "$SUSP" ]; then
+        echo "$SUSP"
+        # pour l’instant: warning seulement (pas d’échec de job)
+        # exit 1
+      fi
