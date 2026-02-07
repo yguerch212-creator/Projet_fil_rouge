@@ -1,6 +1,6 @@
 services:
   gmod:
-    image: projetfilrouge/gmod-server:jour1-stable
+    image: projetfilrouge/gmod-server:jour1-final
     container_name: gmod-server
     deploy:
       resources:
