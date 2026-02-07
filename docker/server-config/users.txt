@@ -1,0 +1,10 @@
+"users"
+{
+	"superadmin"
+	{
+		"yguerch"
+		{
+			"steamid"	"STEAM_0:0:189623672"
+		}
+	}
+}
