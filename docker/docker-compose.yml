@@ -14,7 +14,6 @@ services:
       - "27015:27015/udp"
       - "27015:27015/tcp"
     volumes:
-      - ./gmod-data:/home/gmod/server
       - ./addons:/home/gmod/server/garrysmod/addons
     environment:
       - HOSTNAME=ProjetFilRouge-DevServer
