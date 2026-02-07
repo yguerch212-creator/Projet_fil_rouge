@@ -1,0 +1,53 @@
+services:
+  gmod:
+    image: ceifa/garrysmod:latest
+    container_name: gmod-server
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    ports:
+      - "27015:27015/udp"
+      - "27015:27015/tcp"
+    volumes:
+      - ./gmod-data:/home/gmod/server
+      - ./addons:/home/gmod/server/garrysmod/addons
+    environment:
+      - HOSTNAME=ProjetFilRouge-DevServer
+      - GAMEMODE=darkrp
+      - MAP=gm_construct
+      - MAXPLAYERS=2
+    restart: unless-stopped
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8.0
+    container_name: gmod-mysql
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+    environment:
+      MYSQL_ROOT_PASSWORD: GmodSecurePass2025!
+      MYSQL_DATABASE: gmod_construction
+      MYSQL_USER: gmod_user
+      MYSQL_PASSWORD: GmodUserPass2025!
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pGmodSecurePass2025!"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
