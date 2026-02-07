@@ -1,0 +1,16 @@
+# Docker volumes
+docker/gmod-data/
+docker/mysql-data/
+*.log
+
+# Sauvegardes
+backups/
+
+# Fichiers temporaires
+*.tmp
+*.swp
+.DS_Store
+
+# Secrets
+*.env
+passwords.txt
