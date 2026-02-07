@@ -23,6 +23,7 @@ services:
       - GAMEMODE=darkrp
       - MAP=gm_construct
       - MAXPLAYERS=2
+      - AUTHKEY=04FBFFDF7B45771EFA25FE3A5713C66D
     restart: unless-stopped
     depends_on:
       - mysql
