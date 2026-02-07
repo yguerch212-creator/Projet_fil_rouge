@@ -14,3 +14,4 @@ backups/
 # Secrets
 *.env
 passwords.txt
+references/
