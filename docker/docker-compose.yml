@@ -24,6 +24,7 @@ services:
       - MAP=gm_construct
       - MAXPLAYERS=2
       - AUTHKEY=04FBFFDF7B45771EFA25FE3A5713C66D
+      - ARGS=+host_workshop_collection 2270926906
     restart: unless-stopped
     depends_on:
       - mysql
