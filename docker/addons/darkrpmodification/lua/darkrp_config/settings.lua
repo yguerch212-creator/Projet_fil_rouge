@@ -6,6 +6,7 @@
 
 -- Véhicules activés
 GM.Config.vehicles                      = true
+GM.Config.adminvehicles                 = 0      -- 0 = tout le monde, 1 = admin, 2 = superadmin, 3 = rcon only
 
 -- Monnaie
 GM.Config.currency                      = "$"

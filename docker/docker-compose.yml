@@ -1,6 +1,6 @@
 services:
   gmod:
-    image: ceifa/garrysmod:latest
+    image: projetfilrouge/gmod-server:jour1-stable
     container_name: gmod-server
     deploy:
       resources:
