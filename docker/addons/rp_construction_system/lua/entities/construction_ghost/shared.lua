@@ -6,7 +6,7 @@
 AddCSLuaFile()
 
 ENT.Type = "anim"
-ENT.Base = "base_gltransfer"
+ENT.Base = "base_anim"
 ENT.PrintName = "Blueprint Ghost"
 ENT.Author = "RP Construction System"
 ENT.Spawnable = false
