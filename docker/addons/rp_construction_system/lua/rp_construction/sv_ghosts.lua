@@ -142,40 +142,74 @@ end
 
 --- Net receiver : le client envoie quand il appuie E en regardant un ghost
 net.Receive("Construction_MaterializeGhost", function(len, ply)
-    if not IsValid(ply) or not ply:Alive() then return end
+    print("[SV_GHOST] Net received from " .. ply:Nick())
+
+    if not IsValid(ply) or not ply:Alive() then
+        print("[SV_GHOST] STOP: player invalid or dead")
+        return
+    end
 
     -- Cooldown
-    if ply.LastGhostUse and ply.LastGhostUse > CurTime() then return end
+    if ply.LastGhostUse and ply.LastGhostUse > CurTime() then
+        print("[SV_GHOST] STOP: cooldown")
+        return
+    end
     ply.LastGhostUse = CurTime() + 0.3
 
     -- Vérifier caisse
     local crate = ply.ActiveCrate
+    print("[SV_GHOST] Crate: " .. tostring(crate) .. " valid=" .. tostring(IsValid(crate)))
     if not IsValid(crate) or crate:GetClass() ~= "construction_crate" then
         DarkRP.notify(ply, 1, 3, "Activez d'abord une caisse (E sur la caisse)")
         ply.ActiveCrate = nil
+        print("[SV_GHOST] STOP: no valid crate")
         return
     end
 
+    print("[SV_GHOST] Materials: " .. crate:GetMaterials())
     if crate:GetMaterials() <= 0 then
         DarkRP.notify(ply, 1, 3, "Caisse vide !")
         ply.ActiveCrate = nil
         return
     end
 
-    -- Trouver le ghost côté serveur (on ne fait pas confiance au client)
+    -- Trouver le ghost côté serveur
     local ghost = FindGhostInSight(ply, 300)
+    print("[SV_GHOST] FindGhostInSight result: " .. tostring(ghost))
+
+    -- Debug: log all ghosts and OBB test
+    local eyePos = ply:EyePos()
+    local aimVec = ply:GetAimVector()
+    for _, ent in ipairs(ents.FindByClass("construction_ghost")) do
+        if IsValid(ent) then
+            local mins, maxs = ent:GetModelBounds()
+            local dist = eyePos:Distance(ent:GetPos())
+            local hitPos = nil
+            if mins and maxs then
+                hitPos = util.IntersectRayWithOBB(eyePos, aimVec * 300, ent:GetPos(), ent:GetAngles(), mins - Vector(5,5,5), maxs + Vector(5,5,5))
+            end
+            print("[SV_GHOST]   ghost=" .. tostring(ent) .. " dist=" .. math.floor(dist) .. " hit=" .. tostring(hitPos ~= nil) .. " mins=" .. tostring(mins) .. " maxs=" .. tostring(maxs))
+        end
+    end
+
     if not IsValid(ghost) then
-        DarkRP.notify(ply, 1, 2, "Aucun fantome en vue")
+        DarkRP.notify(ply, 1, 2, "Aucun fantome en vue (serveur)")
+        print("[SV_GHOST] STOP: no ghost in sight (server-side)")
         return
     end
 
     -- Consommer un matériau
-    if not crate:UseMaterial() then return end
+    if not crate:UseMaterial() then
+        print("[SV_GHOST] STOP: UseMaterial failed")
+        return
+    end
 
     -- Matérialiser
+    print("[SV_GHOST] Materializing " .. ghost:GetModel())
     local prop = ghost:Materialize(ply)
 
     if IsValid(prop) then
+        print("[SV_GHOST] SUCCESS: " .. tostring(prop))
         undo.Create("Prop Materialise")
         undo.AddEntity(prop)
         undo.SetPlayer(ply)
@@ -202,6 +236,8 @@ net.Receive("Construction_MaterializeGhost", function(len, ply)
                 ActiveGroups[groupID] = nil
             end
         end
+    else
+        print("[SV_GHOST] FAIL: Materialize returned nil")
     end
 end)
 
