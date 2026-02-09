@@ -1,6 +1,11 @@
 --[[-----------------------------------------------------------------------
-    RP Construction System - Sauvegarde/Chargement Blueprints (Server)
-    Utilise duplicator pour sérialiser, charge en tant que ghosts
+    RP Construction System - Blueprints (Server)
+    
+    Les sauvegardes sont LOCALES (côté client dans data/).
+    Le serveur gère uniquement :
+    - La sérialisation des props sélectionnés → envoi au client
+    - La réception des données blueprint pour le placement (ghosts)
+    - La validation de sécurité (blacklist, limites props)
 ---------------------------------------------------------------------------]]
 
 ConstructionSystem.Blueprints = ConstructionSystem.Blueprints or {}
@@ -9,7 +14,7 @@ local saveCooldowns = {}
 local loadCooldowns = {}
 
 ---------------------------------------------------------------------------
--- SÉRIALISATION
+-- SÉRIALISATION (serveur → client)
 ---------------------------------------------------------------------------
 
 local function SerializeValue(val)
@@ -29,46 +34,21 @@ local function SerializeValue(val)
     end
 end
 
-local function DeserializeValue(val)
-    if type(val) ~= "table" then return val end
-    if val.__type == "Vector" then
-        return Vector(val.x or 0, val.y or 0, val.z or 0)
-    elseif val.__type == "Angle" then
-        return Angle(val.p or 0, val.y or 0, val.r or 0)
-    else
-        local new = {}
-        for k, v in pairs(val) do
-            local numK = tonumber(k)
-            new[numK or k] = DeserializeValue(v)
-        end
-        return new
-    end
-end
-
 --- Vérifier si une entité est blacklistée
 local function IsBlacklisted(ent)
     local class = ent:GetClass()
-
-    -- Seules les classes autorisées
-    if not ConstructionSystem.Config.AllowedClasses[class] then
-        return true
-    end
-
-    -- Check patterns blacklist
+    if not ConstructionSystem.Config.AllowedClasses[class] then return true end
     for _, pattern in ipairs(ConstructionSystem.Config.BlacklistedEntities) do
-        if string.find(class, pattern, 1, true) then
-            return true
-        end
+        if string.find(class, pattern, 1, true) then return true end
     end
-
     return false
 end
 
---- Sérialise les props sélectionnés
+--- Sérialise les props sélectionnés en données blueprint
 function ConstructionSystem.Blueprints.Serialize(entities)
-    if not entities or #entities == 0 then return nil, 0, 0 end
+    if not entities or #entities == 0 then return nil, 0 end
 
-    local dupeData = { Entities = {}, Constraints = {} }
+    local data = { Entities = {} }
 
     -- Centre de la structure
     local center = Vector(0, 0, 0)
@@ -77,7 +57,7 @@ function ConstructionSystem.Blueprints.Serialize(entities)
     end
     center = center / #entities
 
-    local constraintsSeen = {}
+    local count = 0
     for idx, ent in ipairs(entities) do
         if IsValid(ent) and not IsBlacklisted(ent) then
             local entData = {
@@ -86,9 +66,7 @@ function ConstructionSystem.Blueprints.Serialize(entities)
                 Pos = ent:GetPos() - center,
                 Ang = ent:GetAngles(),
                 Skin = ent:GetSkin(),
-                Color = ent:GetColor(),
                 Material = ent:GetMaterial(),
-                CollisionGroup = ent:GetCollisionGroup(),
             }
 
             local phys = ent:GetPhysicsObject()
@@ -97,73 +75,71 @@ function ConstructionSystem.Blueprints.Serialize(entities)
                 entData.Mass = phys:GetMass()
             end
 
-            dupeData.Entities[idx] = entData
-
-            -- Constraints
-            local constraints = constraint.GetTable(ent)
-            for _, con in pairs(constraints) do
-                local conId = tostring(con.Type) .. "_"
-                for i = 1, 4 do
-                    local e = con["Ent" .. i]
-                    if IsValid(e) then conId = conId .. e:EntIndex() .. "_" end
-                end
-
-                if not constraintsSeen[conId] then
-                    constraintsSeen[conId] = true
-                    local ent1Valid, ent2Valid = false, false
-                    local idx1, idx2
-                    for i, selEnt in ipairs(entities) do
-                        if con.Ent1 == selEnt then ent1Valid = true; idx1 = i end
-                        if con.Ent2 == selEnt then ent2Valid = true; idx2 = i end
-                    end
-
-                    if ent1Valid and ent2Valid then
-                        table.insert(dupeData.Constraints, {
-                            Type = con.Type, Ent1 = idx1, Ent2 = idx2,
-                            Bone1 = con.Bone1 or 0, Bone2 = con.Bone2 or 0,
-                            ForceLimit = con.forcelimit or 0, NoCollide = con.nocollide or false,
-                        })
-                    end
-                end
-            end
+            data.Entities[idx] = entData
+            count = count + 1
         end
     end
 
-    local serialized = SerializeValue(dupeData)
-    local json = util.TableToJSON(serialized)
-    if not json then return nil, 0, 0 end
-
-    local compressed = util.Compress(json)
-    if not compressed then return nil, 0, 0 end
-
-    local encoded = util.Base64Encode(compressed)
-    return encoded, table.Count(dupeData.Entities), #dupeData.Constraints
-end
-
---- Désérialise un blueprint (retourne les données, pas de spawn)
-function ConstructionSystem.Blueprints.Deserialize(encodedData)
-    if not encodedData or encodedData == "" then return nil, "Donnees vides" end
-
-    local compressed = util.Base64Decode(encodedData)
-    if not compressed then return nil, "Erreur decodage base64" end
-
-    local json = util.Decompress(compressed)
-    if not json then return nil, "Erreur decompression" end
-
-    local serialized = util.JSONToTable(json)
-    if not serialized then return nil, "Erreur parsing JSON" end
-
-    local dupeData = DeserializeValue(serialized)
-    if not dupeData or not dupeData.Entities then return nil, "Donnees corrompues" end
-
-    return dupeData, nil
+    return data, count
 end
 
 ---------------------------------------------------------------------------
--- NET RECEIVERS
+-- VALIDATION DES DONNÉES BLUEPRINT (reçues du client)
 ---------------------------------------------------------------------------
 
---- Sauvegarder un blueprint
+local function ValidateBlueprintData(data)
+    if not data or type(data) ~= "table" then return false, "Données invalides" end
+    if not data.Entities or type(data.Entities) ~= "table" then return false, "Pas d'entités" end
+
+    local count = 0
+    for key, entData in pairs(data.Entities) do
+        count = count + 1
+
+        -- Vérifier que c'est un prop_physics
+        if entData.Class and entData.Class ~= "prop_physics" then
+            return false, "Classe interdite: " .. tostring(entData.Class)
+        end
+
+        -- Vérifier le modèle
+        if not entData.Model or type(entData.Model) ~= "string" then
+            return false, "Modèle manquant"
+        end
+
+        -- Vérifier les positions/angles
+        if not entData.Pos or type(entData.Pos) ~= "table" then
+            return false, "Position manquante"
+        end
+    end
+
+    -- Vérifier la limite de props
+    local maxProps = ConstructionSystem.Config.MaxPropsPerBlueprint
+    if maxProps > 0 and count > maxProps then
+        return false, "Trop de props (" .. count .. "/" .. maxProps .. ")"
+    end
+
+    return true, count
+end
+
+--- Reconstruit les Vector/Angle depuis les tables sérialisées
+local function RebuildVectors(data)
+    if not data or not data.Entities then return data end
+
+    for key, entData in pairs(data.Entities) do
+        if entData.Pos and type(entData.Pos) == "table" then
+            entData.Pos = Vector(entData.Pos.x or 0, entData.Pos.y or 0, entData.Pos.z or 0)
+        end
+        if entData.Ang and type(entData.Ang) == "table" then
+            entData.Ang = Angle(entData.Ang.p or 0, entData.Ang.y or 0, entData.Ang.r or 0)
+        end
+    end
+
+    return data
+end
+
+---------------------------------------------------------------------------
+-- NET: SAUVEGARDER (serveur sérialise → envoie au client pour stockage local)
+---------------------------------------------------------------------------
+
 net.Receive("Construction_SaveBlueprint", function(len, ply)
     if not IsValid(ply) or not ply:Alive() then return end
 
@@ -176,9 +152,9 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
     local name = net.ReadString()
     local description = net.ReadString()
 
-    -- Validation
+    -- Validation nom
     if not name or #name < 1 or #name > ConstructionSystem.Config.MaxNameLength then
-        DarkRP.notify(ply, 1, 3, "Nom invalide (1-" .. ConstructionSystem.Config.MaxNameLength .. " caracteres)")
+        DarkRP.notify(ply, 1, 3, "Nom invalide (1-" .. ConstructionSystem.Config.MaxNameLength .. " caractères)")
         return
     end
     name = string.gsub(name, "[^%w%s_%-%.%(%)%[%]]", "")
@@ -188,38 +164,61 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
         description = string.sub(description, 1, ConstructionSystem.Config.MaxDescLength)
     end
 
-    -- Vérifier le nombre de blueprints (0 = illimité)
-    ConstructionSystem.DB.CountPlayerBlueprints(ply, function(count)
-        local maxBP = ConstructionSystem.Config.MaxBlueprintsPerPlayer
-        if maxBP > 0 and count >= maxBP then
-            DarkRP.notify(ply, 1, 3, "Limite de blueprints atteinte (" .. maxBP .. ")")
-            return
-        end
+    -- Récupérer les props sélectionnés
+    local entities = ConstructionSystem.Selection.GetEntities(ply)
+    if #entities == 0 then
+        DarkRP.notify(ply, 1, 3, "Aucun prop sélectionné !")
+        return
+    end
 
-        local entities = ConstructionSystem.Selection.GetEntities(ply)
-        if #entities == 0 then
-            DarkRP.notify(ply, 1, 3, "Aucun prop selectionne !")
-            return
-        end
+    -- Sérialiser
+    local data, propCount = ConstructionSystem.Blueprints.Serialize(entities)
+    if not data then
+        DarkRP.notify(ply, 1, 3, "Erreur de sérialisation")
+        return
+    end
 
-        local data, propCount, constraintCount = ConstructionSystem.Blueprints.Serialize(entities)
-        if not data then
-            DarkRP.notify(ply, 1, 3, "Erreur de serialisation")
-            return
-        end
+    -- Préparer le blueprint complet
+    local blueprint = {
+        name = name,
+        description = description,
+        prop_count = propCount,
+        created_at = os.date("%Y-%m-%d %H:%M"),
+        version = ConstructionSystem.Config.Version,
+        data = data,
+    }
 
-        ConstructionSystem.DB.SaveBlueprint(ply, name, description, data, propCount, constraintCount, function(success, id, err)
-            if success then
-                DarkRP.notify(ply, 0, 5, "Blueprint '" .. name .. "' sauvegarde ! (" .. propCount .. " props)")
-                ConstructionSystem.Selection.Clear(ply)
-            else
-                DarkRP.notify(ply, 1, 4, "Erreur sauvegarde : " .. tostring(err))
-            end
-        end)
-    end)
+    -- Sérialiser pour envoi
+    local serialized = SerializeValue(blueprint)
+    local json = util.TableToJSON(serialized)
+    local compressed = util.Compress(json)
+
+    if not compressed then
+        DarkRP.notify(ply, 1, 3, "Erreur compression")
+        return
+    end
+
+    -- Envoyer au client pour stockage local
+    net.Start("Construction_SaveToClient")
+    net.WriteString(name)
+    net.WriteUInt(propCount, 10)
+    net.WriteUInt(#compressed, 32)
+    net.WriteData(compressed, #compressed)
+    net.Send(ply)
+
+    ConstructionSystem.Selection.Clear(ply)
+    DarkRP.notify(ply, 0, 5, "Blueprint '" .. name .. "' sérialisé (" .. propCount .. " props) - Sauvegarde locale")
+
+    -- Log serveur (optionnel, si DB connectée)
+    if ConstructionSystem.DB and ConstructionSystem.DB.IsConnected() then
+        ConstructionSystem.DB.Log(ply, "save", "Blueprint '" .. name .. "' (" .. propCount .. " props)")
+    end
 end)
 
---- Charger un blueprint → envoyer preview au client
+---------------------------------------------------------------------------
+-- NET: CHARGER (client envoie les données → serveur valide → preview/ghosts)
+---------------------------------------------------------------------------
+
 net.Receive("Construction_LoadBlueprint", function(len, ply)
     if not IsValid(ply) or not ply:Alive() then return end
 
@@ -229,165 +228,150 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
     end
     loadCooldowns[ply] = CurTime() + ConstructionSystem.Config.LoadCooldown
 
-    local blueprintId = net.ReadUInt(32)
+    -- Recevoir les données compressées du client
+    local dataLen = net.ReadUInt(32)
 
-    ConstructionSystem.DB.LoadBlueprint(blueprintId, ply, function(blueprint, err)
-        if not blueprint then
-            DarkRP.notify(ply, 1, 4, err or "Blueprint introuvable")
-            return
-        end
+    -- Sécurité: limiter la taille (max 512KB)
+    if dataLen > 524288 then
+        DarkRP.notify(ply, 1, 3, "Fichier trop volumineux")
+        return
+    end
 
-        -- Désérialiser
-        local dupeData, deserErr = ConstructionSystem.Blueprints.Deserialize(blueprint.data)
-        if not dupeData then
-            DarkRP.notify(ply, 1, 4, "Erreur chargement : " .. tostring(deserErr))
-            return
-        end
+    local compressed = net.ReadData(dataLen)
+    if not compressed then
+        DarkRP.notify(ply, 1, 3, "Données corrompues")
+        return
+    end
 
-        -- Préparer les données légères pour le client (modèles + positions relatives)
-        local previewData = { Entities = {} }
-        for key, entData in pairs(dupeData.Entities) do
-            previewData.Entities[key] = {
-                Model = entData.Model,
-                Pos = entData.Pos,
-                Ang = entData.Ang,
-                Skin = entData.Skin,
-                Material = entData.Material,
-            }
-        end
+    local json = util.Decompress(compressed)
+    if not json then
+        DarkRP.notify(ply, 1, 3, "Erreur décompression")
+        return
+    end
 
-        -- Compresser et envoyer au client
-        local json = util.TableToJSON(previewData)
-        local compressed = util.Compress(json)
+    local blueprint = util.JSONToTable(json)
+    if not blueprint or not blueprint.data or not blueprint.data.Entities then
+        DarkRP.notify(ply, 1, 3, "Blueprint invalide")
+        return
+    end
 
-        if not compressed then
-            DarkRP.notify(ply, 1, 4, "Erreur compression preview")
-            return
-        end
+    -- Reconstruire les Vector/Angle
+    local dupeData = RebuildVectors(blueprint.data)
 
-        -- Stocker les données complètes pour le spawn (quand le client confirme)
-        ply.PendingBlueprint = {
-            id = blueprintId,
-            data = dupeData,
+    -- Valider côté serveur (blacklist, limites)
+    local valid, result = ValidateBlueprintData(dupeData)
+    if not valid then
+        DarkRP.notify(ply, 1, 4, "Blueprint rejeté: " .. tostring(result))
+        return
+    end
+
+    -- Préparer la preview pour le client (données légères)
+    local previewData = { Entities = {} }
+    for key, entData in pairs(dupeData.Entities) do
+        previewData.Entities[key] = {
+            Model = entData.Model,
+            Pos = entData.Pos,
+            Ang = entData.Ang,
+            Skin = entData.Skin,
+            Material = entData.Material,
         }
+    end
 
-        net.Start("Construction_SendPreview")
-        net.WriteUInt(blueprintId, 32)
-        net.WriteUInt(#compressed, 32)
-        net.WriteData(compressed, #compressed)
-        net.Send(ply)
-    end)
+    local previewJson = util.TableToJSON(previewData)
+    local previewCompressed = util.Compress(previewJson)
+
+    if not previewCompressed then
+        DarkRP.notify(ply, 1, 4, "Erreur preview")
+        return
+    end
+
+    -- Stocker les données complètes pour le spawn
+    ply.PendingBlueprint = {
+        data = dupeData,
+        name = blueprint.name or "Sans nom",
+    }
+
+    -- Envoyer la preview au client
+    net.Start("Construction_SendPreview")
+    net.WriteUInt(0, 32)  -- pas d'ID (stockage local)
+    net.WriteUInt(#previewCompressed, 32)
+    net.WriteData(previewCompressed, #previewCompressed)
+    net.Send(ply)
 end)
 
---- Confirmer le placement → spawn des GHOSTS
+---------------------------------------------------------------------------
+-- NET: CONFIRMER PLACEMENT → SPAWN GHOSTS
+---------------------------------------------------------------------------
+
 net.Receive("Construction_ConfirmPlacement", function(len, ply)
     if not IsValid(ply) or not ply:Alive() then return end
 
-    local blueprintId = net.ReadUInt(32)
+    local _ = net.ReadUInt(32)  -- blueprintId (legacy, ignoré)
     local spawnPos = net.ReadVector()
     local rotation = net.ReadFloat()
 
-    -- Vérifier que le joueur a bien un blueprint en attente
-    if not ply.PendingBlueprint or ply.PendingBlueprint.id ~= blueprintId then
+    if not ply.PendingBlueprint then
         DarkRP.notify(ply, 1, 3, "Aucun blueprint en attente")
         return
     end
 
-    -- Validation: position pas trop loin du joueur
+    -- Validation: position pas trop loin
     if spawnPos:Distance(ply:GetPos()) > 5000 then
         DarkRP.notify(ply, 1, 3, "Position trop éloignée")
         return
     end
 
-    -- Appliquer la rotation aux données
     local dupeData = ply.PendingBlueprint.data
-    local rotatedData = { Entities = {}, Constraints = dupeData.Constraints }
+    local bpName = ply.PendingBlueprint.name
+
+    -- Appliquer la rotation
+    local rotatedData = { Entities = {} }
     local rad = math.rad(rotation)
     local cos, sin = math.cos(rad), math.sin(rad)
 
     for key, entData in pairs(dupeData.Entities) do
         local newData = table.Copy(entData)
-        -- Rotation du vecteur offset
         if newData.Pos then
             local ox, oy = newData.Pos.x or 0, newData.Pos.y or 0
             newData.Pos = Vector(ox * cos - oy * sin, ox * sin + oy * cos, newData.Pos.z or 0)
         end
-        -- Rotation de l'angle
         if newData.Ang then
             newData.Ang = Angle(newData.Ang.p or 0, (newData.Ang.y or 0) + rotation, newData.Ang.r or 0)
         end
         rotatedData.Entities[key] = newData
     end
 
-    -- Spawn des GHOSTS à la position confirmée
+    -- Spawn des GHOSTS
     local ok, groupID = ConstructionSystem.Ghosts.SpawnFromBlueprint(ply, rotatedData, spawnPos)
-    if not ok then
-        DarkRP.notify(ply, 1, 4, "Erreur spawn : " .. tostring(groupID))
+    if ok then
+        -- Log
+        if ConstructionSystem.DB and ConstructionSystem.DB.IsConnected() then
+            ConstructionSystem.DB.Log(ply, "load", "Ghosts placés: '" .. bpName .. "'")
+        end
+    else
+        DarkRP.notify(ply, 1, 4, "Erreur spawn: " .. tostring(groupID))
     end
 
     ply.PendingBlueprint = nil
 end)
 
---- Annuler le placement
+---------------------------------------------------------------------------
+-- NET: ANNULER PLACEMENT
+---------------------------------------------------------------------------
+
 net.Receive("Construction_CancelPlacement", function(len, ply)
     if not IsValid(ply) then return end
     ply.PendingBlueprint = nil
 end)
 
---- Supprimer un blueprint
-net.Receive("Construction_DeleteBlueprint", function(len, ply)
-    if not IsValid(ply) then return end
-    local blueprintId = net.ReadUInt(32)
+---------------------------------------------------------------------------
+-- CLEANUP
+---------------------------------------------------------------------------
 
-    ConstructionSystem.DB.DeleteBlueprint(blueprintId, ply, function(success, err)
-        if success then
-            DarkRP.notify(ply, 0, 3, "Blueprint supprime")
-            ConstructionSystem.Blueprints.SendList(ply)
-        else
-            DarkRP.notify(ply, 1, 3, err or "Erreur suppression")
-        end
-    end)
-end)
-
---- Demander la liste
-net.Receive("Construction_RequestBlueprints", function(len, ply)
-    if not IsValid(ply) then return end
-    ConstructionSystem.Blueprints.SendList(ply)
-end)
-
---- Envoyer la liste au client
-function ConstructionSystem.Blueprints.SendList(ply)
-    if not IsValid(ply) then return end
-
-    ConstructionSystem.DB.GetPlayerBlueprints(ply, function(blueprints)
-        net.Start("Construction_SendBlueprints")
-        net.WriteUInt(#blueprints, 8)
-
-        for _, bp in ipairs(blueprints) do
-            net.WriteUInt(tonumber(bp.id) or 0, 32)
-            net.WriteString(bp.name or "")
-            net.WriteString(bp.description or "")
-            net.WriteUInt(tonumber(bp.prop_count) or 0, 10)
-            net.WriteUInt(tonumber(bp.constraint_count) or 0, 10)
-            net.WriteBool(tonumber(bp.is_public) == 1)
-            net.WriteString(bp.created_at or "")
-        end
-
-        net.Send(ply)
-    end)
-end
-
---- Net: ouvrir le menu (relay serveur -> client)
-net.Receive("Construction_OpenMenu", function(len, ply)
-    if not IsValid(ply) then return end
-    net.Start("Construction_OpenMenu")
-    net.Send(ply)
-end)
-
---- Cleanup cooldowns
 hook.Add("PlayerDisconnected", "Construction_ClearBPCooldowns", function(ply)
     saveCooldowns[ply] = nil
     loadCooldowns[ply] = nil
+    ply.PendingBlueprint = nil
 end)
 
-print("[Construction] Module sv_blueprints charge")
+print("[Construction] Module sv_blueprints chargé")

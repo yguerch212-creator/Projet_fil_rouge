@@ -13,7 +13,6 @@ ConstructionSystem.Config.Version = "2.0.0"
 -- LIMITES
 ---------------------------------------------------------------------------
 ConstructionSystem.Config.MaxPropsPerBlueprint = 150   -- Max props par blueprint (0 = illimité)
-ConstructionSystem.Config.MaxBlueprintsPerPlayer = 0    -- Max blueprints par joueur (0 = illimité)
 ConstructionSystem.Config.MaxCratesPerPlayer = 2        -- Max caisses simultanées par joueur (0 = illimité)
 ConstructionSystem.Config.MaxNameLength = 50
 ConstructionSystem.Config.MaxDescLength = 200
@@ -88,27 +87,22 @@ ConstructionSystem.Config.DB = {
 -- NET MESSAGES
 ---------------------------------------------------------------------------
 ConstructionSystem.NetMessages = {
-    -- Menu / Blueprints
+    -- Menu
     "Construction_OpenMenu",
-    "Construction_RequestBlueprints",
-    "Construction_SendBlueprints",
-    "Construction_SaveBlueprint",
-    "Construction_LoadBlueprint",
-    "Construction_DeleteBlueprint",
-    "Construction_ShareBlueprint",
-    "Construction_Notification",
+    -- Blueprints (client ↔ serveur)
+    "Construction_SaveBlueprint",       -- Client → Serveur : demande sérialisation
+    "Construction_SaveToClient",        -- Serveur → Client : données sérialisées pour stockage local
+    "Construction_LoadBlueprint",       -- Client → Serveur : envoie blueprint local pour validation
     -- Sélection
     "Construction_SelectToggle",
     "Construction_SelectRadius",
     "Construction_SelectClear",
     "Construction_RequestSync",
     "Construction_SyncSelection",
-    -- Ghosts
-    "Construction_SpawnGhosts",
-    "Construction_RemoveGhosts",
-    "Construction_MaterializeGhost",
     -- Placement
-    "Construction_SendPreview",
-    "Construction_ConfirmPlacement",
-    "Construction_CancelPlacement",
+    "Construction_SendPreview",         -- Serveur → Client : preview après validation
+    "Construction_ConfirmPlacement",    -- Client → Serveur : confirmer position
+    "Construction_CancelPlacement",     -- Client → Serveur : annuler
+    -- Ghosts
+    "Construction_MaterializeGhost",    -- Client → Serveur : matérialiser un ghost
 }

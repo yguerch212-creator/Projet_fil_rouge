@@ -5,9 +5,6 @@
 
 ConstructionSystem.Menu = ConstructionSystem.Menu or {}
 
--- Cache des blueprints reçus du serveur
-local cachedBlueprints = {}
-
 -- Rayon de sélection client (persiste entre sessions)
 ConstructionSystem.ClientRadius = ConstructionSystem.ClientRadius or (ConstructionSystem.Config.SelectionRadiusDefault or 500)
 
@@ -75,31 +72,6 @@ local function StyledButton(parent, text, color, hoverColor, textColor)
 end
 
 ---------------------------------------------------------------------------
--- RÉCEPTION DES DONNÉES
----------------------------------------------------------------------------
-
-net.Receive("Construction_SendBlueprints", function()
-    cachedBlueprints = {}
-    local count = net.ReadUInt(8)
-
-    for i = 1, count do
-        table.insert(cachedBlueprints, {
-            id = net.ReadUInt(32),
-            name = net.ReadString(),
-            description = net.ReadString(),
-            prop_count = net.ReadUInt(10),
-            constraint_count = net.ReadUInt(10),
-            is_public = net.ReadBool(),
-            created_at = net.ReadString(),
-        })
-    end
-
-    if IsValid(ConstructionSystem.Menu.Frame) and ConstructionSystem.Menu.RefreshList then
-        ConstructionSystem.Menu.RefreshList()
-    end
-end)
-
----------------------------------------------------------------------------
 -- OUVERTURE DU MENU
 ---------------------------------------------------------------------------
 
@@ -117,9 +89,6 @@ function ConstructionSystem.Menu.Open()
         chat.AddText(Colors.warning, "[Construction] ", Colors.text, "Terminez le placement avant d'ouvrir le menu")
         return
     end
-
-    net.Start("Construction_RequestBlueprints")
-    net.SendToServer()
 
     -- Frame principale
     local frame = vgui.Create("DFrame")
@@ -253,9 +222,10 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
     local header = vgui.Create("DPanel", page)
     header:Dock(TOP)
     header:SetTall(30)
+    header.bpCount = 0
     header.Paint = function(self, w, h)
         draw.SimpleText("Mes Blueprints", "ConstructionHeader", 0, h/2, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-        draw.SimpleText(#cachedBlueprints .. " sauvegarde(s)", "ConstructionSmall", w, h/2, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+        draw.SimpleText((self.bpCount or 0) .. " sauvegarde(s) locale(s)", "ConstructionSmall", w, h/2, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
     end
 
     -- Liste
@@ -276,7 +246,9 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
         scroll:Clear()
         selectedBP = nil
 
-        if #cachedBlueprints == 0 then
+        local localBlueprints = ConstructionSystem.LocalBlueprints.GetList()
+
+        if #localBlueprints == 0 then
             local empty = vgui.Create("DPanel", scroll)
             empty:Dock(TOP)
             empty:SetTall(80)
@@ -284,10 +256,18 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
                 draw.SimpleText("Aucun blueprint sauvegardé", "ConstructionBody", w/2, h/2 - 10, Colors.textMuted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
                 draw.SimpleText("Sélectionnez des props et sauvegardez !", "ConstructionSmall", w/2, h/2 + 10, Colors.textMuted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
             end
+
+            if IsValid(header) then
+                header.bpCount = 0
+            end
             return
         end
 
-        for _, bp in ipairs(cachedBlueprints) do
+        if IsValid(header) then
+            header.bpCount = #localBlueprints
+        end
+
+        for _, bp in ipairs(localBlueprints) do
             local item = vgui.Create("DButton", scroll)
             item:Dock(TOP)
             item:DockMargin(2, 2, 2, 0)
@@ -324,14 +304,8 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
             end
 
             item.DoDoubleClick = function(self)
-                -- Double-clic = charger directement
                 selectedBP = self.bp
-                net.Start("Construction_LoadBlueprint")
-                net.WriteUInt(self.bp.id, 32)
-                net.SendToServer()
-                if IsValid(ConstructionSystem.Menu.Frame) then
-                    ConstructionSystem.Menu.Frame:Remove()
-                end
+                ConstructionSystem.Menu.LoadBlueprint(self.bp.filename)
             end
         end
     end
@@ -354,12 +328,7 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
             chat.AddText(Colors.warning, "[Construction] Sélectionnez un blueprint")
             return
         end
-        net.Start("Construction_LoadBlueprint")
-        net.WriteUInt(selectedBP.id, 32)
-        net.SendToServer()
-        if IsValid(ConstructionSystem.Menu.Frame) then
-            ConstructionSystem.Menu.Frame:Remove()
-        end
+        ConstructionSystem.Menu.LoadBlueprint(selectedBP.filename)
     end
 
     local btnDelete = StyledButton(btnBar, "✕ Supprimer", Colors.danger, Colors.dangerHover)
@@ -372,9 +341,10 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
             "Supprimer '" .. selectedBP.name .. "' ?",
             "Confirmation",
             "Supprimer", function()
-                net.Start("Construction_DeleteBlueprint")
-                net.WriteUInt(selectedBP.id, 32)
-                net.SendToServer()
+                ConstructionSystem.LocalBlueprints.Delete(selectedBP.filename)
+                selectedBP = nil
+                RefreshList()
+                chat.AddText(Colors.success, "[Construction] Blueprint supprimé")
             end,
             "Annuler", function() end
         )
@@ -384,8 +354,7 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
     btnRefresh:Dock(LEFT)
     btnRefresh:SetWide(110)
     btnRefresh.DoClick = function()
-        net.Start("Construction_RequestBlueprints")
-        net.SendToServer()
+        RefreshList()
     end
 
     return page
@@ -611,12 +580,41 @@ function ConstructionSystem.Menu.CreateHelpPage(parent)
     Section("Limites")
     local maxP = ConstructionSystem.Config.MaxPropsPerBlueprint
     Line("Max props par blueprint : " .. (maxP > 0 and maxP or "Illimité"))
-    local maxBP = ConstructionSystem.Config.MaxBlueprintsPerPlayer
-    Line("Max blueprints : " .. (maxBP > 0 and maxBP or "Illimité"))
+    Line("Sauvegardes : Illimité (stockage local)")
     Line("Max caisses par joueur : " .. (ConstructionSystem.Config.MaxCratesPerPlayer or 2))
     Line("Matériaux par caisse : " .. (ConstructionSystem.Config.CrateMaxMaterials or 30))
 
     return page
+end
+
+---------------------------------------------------------------------------
+-- CHARGEMENT BLUEPRINT (local → serveur)
+---------------------------------------------------------------------------
+
+function ConstructionSystem.Menu.LoadBlueprint(filename)
+    local blueprint = ConstructionSystem.LocalBlueprints.Load(filename)
+    if not blueprint then
+        chat.AddText(Colors.danger, "[Construction] Blueprint introuvable: " .. tostring(filename))
+        return
+    end
+
+    -- Compresser et envoyer au serveur pour validation
+    local json = util.TableToJSON(blueprint)
+    local compressed = util.Compress(json)
+
+    if not compressed then
+        chat.AddText(Colors.danger, "[Construction] Erreur compression")
+        return
+    end
+
+    net.Start("Construction_LoadBlueprint")
+    net.WriteUInt(#compressed, 32)
+    net.WriteData(compressed, #compressed)
+    net.SendToServer()
+
+    if IsValid(ConstructionSystem.Menu.Frame) then
+        ConstructionSystem.Menu.Frame:Remove()
+    end
 end
 
 ---------------------------------------------------------------------------

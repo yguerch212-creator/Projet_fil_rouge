@@ -41,6 +41,7 @@ include("rp_construction/sv_security.lua")
 
 -- 9. Fichiers client à envoyer
 AddCSLuaFile("rp_construction/cl_selection.lua")
+AddCSLuaFile("rp_construction/cl_blueprints.lua")
 AddCSLuaFile("rp_construction/cl_menu.lua")
 AddCSLuaFile("rp_construction/cl_placement.lua")
 
