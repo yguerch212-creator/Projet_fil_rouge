@@ -188,10 +188,11 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
         description = string.sub(description, 1, ConstructionSystem.Config.MaxDescLength)
     end
 
-    -- Vérifier le nombre de blueprints
+    -- Vérifier le nombre de blueprints (0 = illimité)
     ConstructionSystem.DB.CountPlayerBlueprints(ply, function(count)
-        if count >= ConstructionSystem.Config.MaxBlueprintsPerPlayer then
-            DarkRP.notify(ply, 1, 3, "Limite de blueprints atteinte (" .. ConstructionSystem.Config.MaxBlueprintsPerPlayer .. ")")
+        local maxBP = ConstructionSystem.Config.MaxBlueprintsPerPlayer
+        if maxBP > 0 and count >= maxBP then
+            DarkRP.notify(ply, 1, 3, "Limite de blueprints atteinte (" .. maxBP .. ")")
             return
         end
 

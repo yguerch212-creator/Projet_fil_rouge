@@ -12,8 +12,8 @@ ConstructionSystem.Config.Version = "2.0.0"
 ---------------------------------------------------------------------------
 -- LIMITES
 ---------------------------------------------------------------------------
-ConstructionSystem.Config.MaxPropsPerBlueprint = 50
-ConstructionSystem.Config.MaxBlueprintsPerPlayer = 20
+ConstructionSystem.Config.MaxPropsPerBlueprint = 150   -- Limite de props par blueprint (configurable par le serveur)
+ConstructionSystem.Config.MaxBlueprintsPerPlayer = 0    -- 0 = illimité
 ConstructionSystem.Config.MaxNameLength = 50
 ConstructionSystem.Config.MaxDescLength = 200
 
