@@ -30,17 +30,17 @@ AddCSLuaFile("rp_construction/cl_selection.lua")
 -- 6. Connexion à MySQL une fois le serveur prêt
 hook.Add("InitPostEntity", "Construction_DBConnect", function()
     timer.Simple(5, function()
-        print("[Construction] Connexion à MySQL...")
+        print("[Construction] Connexion a MySQL...")
         ConstructionSystem.DB.Connect()
     end)
 end)
 
--- Si le serveur est déjà chargé (hot reload via lua_openscript)
-if game.SinglePlayer() or player.GetCount() > 0 then
-    timer.Simple(2, function()
-        print("[Construction] Hot reload détecté, connexion MySQL...")
+-- Si le serveur est déjà chargé (restart container, hot reload)
+timer.Simple(10, function()
+    if not ConstructionSystem.DB.IsConnected() then
+        print("[Construction] Connexion MySQL (delayed)...")
         ConstructionSystem.DB.Connect()
-    end)
-end
+    end
+end)
 
 print("[Construction] ✅ Initialisation serveur terminée")
