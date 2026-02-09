@@ -46,7 +46,7 @@ hook.Add("InitPostEntity", "Construction_DBConnect", function()
 end)
 
 -- Si le serveur est déjà chargé (restart container, hot reload)
-timer.Simple(10, function()
+timer.Simple(30, function()
     if not ConstructionSystem.DB.IsConnected() then
         print("[Construction] Connexion MySQL (delayed)...")
         ConstructionSystem.DB.Connect()

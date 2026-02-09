@@ -103,9 +103,9 @@ Voir [docs/DOCKER_IMAGES.md](docs/DOCKER_IMAGES.md) pour la gestion complète.
 | Jour 5 | Interface utilisateur (Derma) | ✅ |
 | Jour 6 | Permissions et partage | ✅ |
 | Jour 7 | Logging et sécurité | ✅ |
-| Jour 8 | Tests et optimisation | 🔜 |
-| Jour 9 | Documentation technique | 🔜 |
-| Jour 10 | Finalisation et rendu | 🔜 |
+| Jour 8 | Tests et optimisation | ✅ |
+| Jour 9 | Documentation technique | ✅ |
+| Jour 10 | Finalisation et rendu | ✅ |
 
 ## 📝 Journal de développement
 
