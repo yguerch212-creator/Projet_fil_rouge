@@ -50,12 +50,15 @@ function ConstructionSystem.Blueprints.Serialize(entities)
 
     local data = { Entities = {} }
 
-    -- Centre de la structure
+    -- Centre de la structure (position absolue sauvegardée pour "paste at original pos")
     local center = Vector(0, 0, 0)
     for _, ent in ipairs(entities) do
         center = center + ent:GetPos()
     end
     center = center / #entities
+
+    -- Sauvegarder la position absolue du centre
+    data.OriginalCenter = center
 
     local count = 0
     for idx, ent in ipairs(entities) do
@@ -127,7 +130,17 @@ end
 local function RebuildVectors(data)
     if not data or not data.Entities then return data end
 
+    -- Rebuild OriginalCenter
+    if data.OriginalCenter and type(data.OriginalCenter) == "table" then
+        data.OriginalCenter = Vector(
+            data.OriginalCenter.x or 0,
+            data.OriginalCenter.y or 0,
+            data.OriginalCenter.z or 0
+        )
+    end
+
     for key, entData in pairs(data.Entities) do
+        if type(entData) ~= "table" then continue end
         if entData.Pos and type(entData.Pos) == "table" then
             entData.Pos = Vector(entData.Pos.x or 0, entData.Pos.y or 0, entData.Pos.z or 0)
         end
@@ -269,7 +282,10 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
     local dupeData = RebuildVectors(blueprint.data)
 
     -- Préparer la preview pour le client (données légères)
-    local previewData = { Entities = {} }
+    local previewData = {
+        Entities = {},
+        OriginalCenter = dupeData.OriginalCenter,
+    }
     for key, entData in pairs(dupeData.Entities) do
         previewData.Entities[key] = {
             Model = entData.Model,

@@ -276,7 +276,7 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
             item.bp = bp
 
             item.Paint = function(self, w, h)
-                local isSelected = (selectedBP and selectedBP.id == self.bp.id)
+                local isSelected = (selectedBP and selectedBP.filename == self.bp.filename)
                 local bg = isSelected and Color(Colors.accent.r, Colors.accent.g, Colors.accent.b, 40) or
                            (self:IsHovered() and Colors.bgPanel or Color(0,0,0,0))
                 draw.RoundedBox(4, 0, 0, w, h, bg)

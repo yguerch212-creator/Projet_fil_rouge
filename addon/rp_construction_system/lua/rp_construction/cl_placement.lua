@@ -106,6 +106,22 @@ function ConstructionSystem.Placement.Start(blueprintId, data)
     Offset.yaw = 0
     Offset.roll = 0
 
+    -- Récupérer la position originale si disponible
+    if data.OriginalCenter then
+        local oc = data.OriginalCenter
+        if type(oc) == "Vector" then
+            OriginalCenter = oc
+        elseif type(oc) == "table" then
+            OriginalCenter = Vector(
+                tonumber(oc.x) or tonumber(oc["1"]) or 0,
+                tonumber(oc.y) or tonumber(oc["2"]) or 0,
+                tonumber(oc.z) or tonumber(oc["3"]) or 0
+            )
+        end
+    else
+        OriginalCenter = Vector(0, 0, 0)
+    end
+
     -- Compter props et constraints
     local propCount = 0
     local constraintCount = 0
@@ -208,12 +224,14 @@ local function RotateVector(vec, pitch, yaw, roll)
     return rotated
 end
 
+local OriginalCenter = Vector(0, 0, 0)
+
 local function GetPlacementPosition()
     local ply = LocalPlayer()
     if not IsValid(ply) then return Vector(0, 0, 0) end
 
-    if Options.originalPos then
-        return Vector(0, 0, Offset.height)
+    if Options.originalPos and OriginalCenter:Length() > 0 then
+        return OriginalCenter + Vector(0, 0, Offset.height)
     end
 
     local tr = ply:GetEyeTrace()
@@ -286,6 +304,16 @@ function ConstructionSystem.Placement.OpenPanel()
     local scroll = vgui.Create("DScrollPanel", frame)
     scroll:SetPos(0, 36)
     scroll:SetSize(panelW, panelH - 36)
+
+    -- Hint F3
+    local hint = vgui.Create("DPanel", scroll)
+    hint:Dock(TOP)
+    hint:DockMargin(8, 6, 8, 2)
+    hint:SetTall(28)
+    hint.Paint = function(self, w, h)
+        draw.RoundedBox(4, 0, 0, w, h, Color(59, 130, 246, 40))
+        draw.SimpleText("⌨ Appuyez sur F3 pour un meilleur usage", "DermaDefaultBold", w/2, h/2, Colors.accent, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    end
 
     -- Helper: Section title
     local function SectionTitle(text)
@@ -481,27 +509,8 @@ hook.Add("CreateMove", "Construction_PlacementScroll", function(cmd)
     cmd:SetMouseWheel(0)
 end)
 
--- LMB: Confirmer / RMB: Annuler (quand pas sur le panel)
-local lastClick = 0
-hook.Add("Think", "Construction_PlacementInput", function()
-    if not PlacementActive then return end
-    if CurTime() - lastClick < 0.3 then return end
-
-    -- Ne pas intercepter si la souris est sur un panel Derma
-    if vgui.GetHoveredPanel() and vgui.GetHoveredPanel() ~= vgui.GetWorldPanel() then return end
-
-    if input.IsMouseDown(MOUSE_LEFT) then
-        lastClick = CurTime()
-        ConstructionSystem.Placement.Confirm()
-        return
-    end
-
-    if input.IsMouseDown(MOUSE_RIGHT) then
-        lastClick = CurTime()
-        ConstructionSystem.Placement.Stop()
-        return
-    end
-end)
+-- Placement se fait uniquement via les boutons du panneau
+-- Pas de LMB/RMB pour éviter les validations accidentelles
 
 -- Escape
 hook.Add("PlayerBindPress", "Construction_PlacementEscape", function(ply, bind, pressed)
@@ -530,16 +539,6 @@ hook.Add("HUDPaint", "Construction_PlacementHUD", function()
     draw.SimpleText(info, "DermaDefault", x + w/2, y + h/2, Colors.textDim, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end)
 
----------------------------------------------------------------------------
--- BLOQUER ACTIONS PENDANT PLACEMENT
----------------------------------------------------------------------------
-
-hook.Add("StartCommand", "Construction_PlacementBlock", function(ply, cmd)
-    if not PlacementActive then return end
-    if ply ~= LocalPlayer() then return end
-    cmd:RemoveKey(IN_ATTACK)
-    cmd:RemoveKey(IN_ATTACK2)
-    cmd:RemoveKey(IN_USE)
-end)
+-- Actions non bloquées pendant le placement (le joueur peut se déplacer librement)
 
 print("[Construction] Module cl_placement chargé")
