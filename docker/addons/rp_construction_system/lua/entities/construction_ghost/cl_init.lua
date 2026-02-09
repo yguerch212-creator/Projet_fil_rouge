@@ -1,62 +1,53 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Ghost Prop (Client)
-    Rendu transparent bleuté des props fantômes
+    Rendu transparent bleuté
 ---------------------------------------------------------------------------]]
 
 include("shared.lua")
 
-local GHOST_COLOR = Color(50, 150, 255, 80)       -- Bleu transparent
-local GHOST_COLOR_HOVER = Color(50, 255, 100, 120) -- Vert quand visé
-
 function ENT:Initialize()
-    self.CreatedAt = CurTime()
+    self:SetRenderMode(RENDERMODE_TRANSALPHA)
 end
 
 function ENT:Draw()
-    -- Pas de DrawModel classique, on dessine nous-mêmes en transparent
-end
-
-function ENT:DrawTranslucent()
     local ply = LocalPlayer()
     local isLooking = false
 
-    -- Vérifier si le joueur regarde ce ghost
     if IsValid(ply) then
-        local tr = ply:GetEyeTrace()
-        if tr.Entity == self then
+        local tr = util.TraceLine({
+            start = ply:EyePos(),
+            endpos = ply:EyePos() + ply:GetAimVector() * 500,
+            filter = ply,
+            mask = MASK_ALL,
+        })
+        -- Le trace ne touche pas les SOLID_NONE, donc on check la distance
+        local eyePos = ply:EyePos()
+        local ghostPos = self:GetPos()
+        local aimVec = ply:GetAimVector()
+
+        -- Vérifier si le joueur vise à peu près vers ce ghost
+        local toGhost = (ghostPos - eyePos):GetNormalized()
+        local dot = aimVec:Dot(toGhost)
+        local dist = eyePos:Distance(ghostPos)
+
+        if dot > 0.98 and dist < 500 then
             isLooking = true
         end
     end
 
-    -- Couleur selon si le joueur regarde ou non
-    local col = isLooking and GHOST_COLOR_HOVER or GHOST_COLOR
-
-    -- Effet de pulsation légère
-    local pulse = math.sin(CurTime() * 2 + self:EntIndex()) * 10
-    col = Color(col.r, col.g, col.b, col.a + pulse)
-
-    render.SetColorMaterial()
-    render.SetBlend(col.a / 255)
-    self:SetColor(Color(col.r, col.g, col.b, 255))
-
-    -- Material du ghost
-    local mat = self:GetNWString("ghost_material", "")
-    if mat ~= "" then
-        self:SetMaterial(mat)
-    else
-        self:SetMaterial("models/wireframe")
-    end
-
-    self:DrawModel()
-
-    render.SetBlend(1)
-
-    -- Halo
+    -- Couleur
+    local pulse = math.abs(math.sin(CurTime() * 1.5 + self:EntIndex() * 0.5))
+    local alpha
     if isLooking then
-        halo.Add({self}, Color(50, 255, 100), 3, 3, 1, true, false)
+        alpha = 120 + pulse * 40
+        self:SetColor(Color(80, 255, 120, alpha))
     else
-        halo.Add({self}, Color(50, 150, 255), 1, 1, 1, true, false)
+        alpha = 60 + pulse * 30
+        self:SetColor(Color(100, 180, 255, alpha))
     end
+
+    self:SetRenderMode(RENDERMODE_TRANSALPHA)
+    self:DrawModel()
 end
 
 --- HUD info quand le joueur regarde un ghost
@@ -64,16 +55,38 @@ hook.Add("HUDPaint", "Construction_GhostInfo", function()
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
 
-    local tr = ply:GetEyeTrace()
-    if not IsValid(tr.Entity) or tr.Entity:GetClass() ~= "construction_ghost" then return end
+    -- Trouver le ghost le plus proche dans la direction du regard
+    local eyePos = ply:EyePos()
+    local aimVec = ply:GetAimVector()
+    local bestGhost = nil
+    local bestDot = 0.98
 
-    local ghost = tr.Entity
-    local owner = ghost:GetNWString("ghost_blueprint_owner", "Inconnu")
-    local model = string.match(ghost:GetModel() or "", "([^/]+)$") or "?"
+    for _, ent in ipairs(ents.FindByClass("construction_ghost")) do
+        if IsValid(ent) then
+            local toEnt = (ent:GetPos() - eyePos):GetNormalized()
+            local dot = aimVec:Dot(toEnt)
+            local dist = eyePos:Distance(ent:GetPos())
+
+            if dot > bestDot and dist < 500 then
+                bestDot = dot
+                bestGhost = ent
+            end
+        end
+    end
+
+    if not bestGhost then return end
+
+    local owner = bestGhost:GetNWString("ghost_blueprint_owner", "Inconnu")
+    local model = string.match(bestGhost:GetModel() or "", "([^/]+)$") or "?"
 
     local x, y = ScrW() / 2, ScrH() / 2 + 40
 
-    draw.SimpleTextOutlined("[FANTOME] " .. model, "DermaDefaultBold", x, y, Color(50, 150, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0, 0, 0))
+    draw.SimpleTextOutlined("[FANTOME] " .. model, "DermaDefaultBold", x, y, Color(100, 180, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0, 0, 0))
     draw.SimpleTextOutlined("Blueprint de: " .. owner, "DermaDefault", x, y + 18, Color(180, 180, 180), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0, 0, 0))
-    draw.SimpleTextOutlined("Utilisez une caisse de materiaux + E", "DermaDefault", x, y + 34, Color(100, 255, 100), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0, 0, 0))
+
+    if ply.ActiveCrate then
+        draw.SimpleTextOutlined("Appuyez E pour materialiser", "DermaDefault", x, y + 34, Color(100, 255, 100), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0, 0, 0))
+    else
+        draw.SimpleTextOutlined("Activez une caisse d'abord (E sur caisse)", "DermaDefault", x, y + 34, Color(255, 200, 50), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, Color(0, 0, 0))
+    end
 end)

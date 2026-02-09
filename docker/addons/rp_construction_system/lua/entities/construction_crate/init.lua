@@ -1,10 +1,6 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Caisse de Matériaux (Server)
     Contient X matériaux pour matérialiser des props fantômes
-    
-    Flow:
-    1. Joueur Use sur la caisse → il "prend" la caisse (lié au joueur)
-    2. Joueur Use sur un ghost → le ghost se matérialise, -1 matériau
 ---------------------------------------------------------------------------]]
 
 AddCSLuaFile("shared.lua")
@@ -13,7 +9,12 @@ AddCSLuaFile("cl_init.lua")
 include("shared.lua")
 
 function ENT:Initialize()
-    self:SetModel(ConstructionSystem.Config.CrateModel)
+    -- Choisir le modèle (préféré si disponible, sinon fallback)
+    local preferred = ConstructionSystem.Config.CrateModelPreferred
+    local fallback = ConstructionSystem.Config.CrateModel
+    local model = util.IsValidModel(preferred) and preferred or fallback
+
+    self:SetModel(model)
     self:PhysicsInit(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetSolid(SOLID_VPHYSICS)
@@ -22,6 +23,7 @@ function ENT:Initialize()
     local phys = self:GetPhysicsObject()
     if IsValid(phys) then
         phys:Wake()
+        phys:SetMass(50)
     end
 
     -- Matériaux restants
@@ -39,7 +41,6 @@ function ENT:UseMaterial()
     self.Materials = self.Materials - 1
     self:SetNWInt("materials", self.Materials)
 
-    -- Supprimer la caisse si vide
     if self.Materials <= 0 then
         timer.Simple(0.5, function()
             if IsValid(self) then
@@ -51,11 +52,10 @@ function ENT:UseMaterial()
     return true
 end
 
---- Interaction Use : le joueur prend/active la caisse
 function ENT:Use(activator, caller)
     if not IsValid(activator) or not activator:IsPlayer() then return end
 
-    -- Cooldown anti-spam
+    -- Cooldown
     if self.LastUse and self.LastUse > CurTime() then return end
     self.LastUse = CurTime() + 0.5
 
@@ -64,15 +64,11 @@ function ENT:Use(activator, caller)
         return
     end
 
-    -- Lier le joueur à cette caisse
     activator.ActiveCrate = self
-
-    DarkRP.notify(activator, 0, 4, "Caisse activee ! (" .. self.Materials .. " materiaux) - Appuyez E sur un prop fantome")
-    activator:ChatPrint("[Construction] Caisse activee avec " .. self.Materials .. " materiaux. Visez un prop fantome et appuyez E.")
+    DarkRP.notify(activator, 0, 4, "Caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
 end
 
 function ENT:OnRemove()
-    -- Délier tous les joueurs qui avaient cette caisse
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) and ply.ActiveCrate == self then
             ply.ActiveCrate = nil

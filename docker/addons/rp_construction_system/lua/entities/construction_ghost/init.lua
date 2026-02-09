@@ -1,6 +1,6 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Ghost Prop (Server)
-    Prop fantôme côté serveur
+    Prop fantôme non-solide, matérialisable via caisse
 ---------------------------------------------------------------------------]]
 
 AddCSLuaFile("shared.lua")
@@ -11,15 +11,17 @@ include("shared.lua")
 function ENT:Initialize()
     self:SetModel(self.GhostModel or "models/props_c17/oildrum001.mdl")
     self:SetMoveType(MOVETYPE_NONE)
-    self:SetSolid(SOLID_NONE)         -- Non-solide
-    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE) -- Pas de collision
+    self:SetSolid(SOLID_NONE)
+    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 
-    -- NetworkVars pour les données du blueprint
+    self:DrawShadow(false)
+    self:SetRenderMode(RENDERMODE_TRANSALPHA)
+    self:SetColor(Color(100, 180, 255, 100))
+
     self:SetNWString("ghost_model", self.GhostModel or self:GetModel())
     self:SetNWString("ghost_material", self.GhostMaterial or "")
     self:SetNWInt("ghost_skin", self.GhostSkin or 0)
     self:SetNWString("ghost_blueprint_owner", self.BlueprintOwner or "")
-    self:SetNWInt("ghost_blueprint_id", self.BlueprintID or 0)
     self:SetNWString("ghost_group_id", self.GroupID or "")
 end
 
@@ -28,7 +30,6 @@ function ENT:SetGhostData(data)
     self.GhostMaterial = data.Material or ""
     self.GhostSkin = data.Skin or 0
     self.BlueprintOwner = data.BlueprintOwner or ""
-    self.BlueprintID = data.BlueprintID or 0
     self.GroupID = data.GroupID or ""
     self.GhostMass = data.Mass
 
@@ -37,7 +38,6 @@ function ENT:SetGhostData(data)
     self:SetNWString("ghost_material", data.Material or "")
     self:SetNWInt("ghost_skin", data.Skin or 0)
     self:SetNWString("ghost_blueprint_owner", data.BlueprintOwner or "")
-    self:SetNWInt("ghost_blueprint_id", data.BlueprintID or 0)
     self:SetNWString("ghost_group_id", data.GroupID or "")
 
     if data.Skin and data.Skin > 0 then
@@ -45,7 +45,7 @@ function ENT:SetGhostData(data)
     end
 end
 
---- Matérialiser ce ghost en vrai prop
+--- Matérialiser : transformer en vrai prop
 function ENT:Materialize(ply)
     if not IsValid(ply) then return nil end
 
@@ -58,7 +58,6 @@ function ENT:Materialize(ply)
     ent:Spawn()
     ent:Activate()
 
-    -- Propriétés
     if self.GhostSkin and self.GhostSkin > 0 then
         ent:SetSkin(self.GhostSkin)
     end
@@ -66,31 +65,16 @@ function ENT:Materialize(ply)
         ent:SetMaterial(self.GhostMaterial)
     end
 
-    -- Physique
     local phys = ent:GetPhysicsObject()
     if IsValid(phys) then
-        phys:EnableMotion(false) -- Frozen par défaut
-        if self.GhostMass then
-            phys:SetMass(self.GhostMass)
-        end
+        phys:EnableMotion(false)
+        if self.GhostMass then phys:SetMass(self.GhostMass) end
     end
 
-    -- Ownership : le joueur qui matérialise possède le prop
     if ent.CPPISetOwner then
         ent:CPPISetOwner(ply)
     end
 
-    -- Supprimer le ghost
     self:Remove()
-
     return ent
-end
-
---- Interaction : Use
-function ENT:Use(activator, caller)
-    -- L'interaction Use sur les ghosts est gérée par sv_ghosts.lua
-    -- via un hook global (plus flexible)
-end
-
-function ENT:Think()
 end

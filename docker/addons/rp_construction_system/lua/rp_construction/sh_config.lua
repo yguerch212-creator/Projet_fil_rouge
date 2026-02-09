@@ -27,7 +27,10 @@ ConstructionSystem.Config.SelectionRadius = 500
 ---------------------------------------------------------------------------
 -- CAISSE DE MATÉRIAUX
 ---------------------------------------------------------------------------
-ConstructionSystem.Config.CrateModel = "models/hts/ww2ns/props/dun/dun_wood_crate_003.mdl"
+-- Modèle préféré (workshop Resistance & Liberation): "models/hts/ww2ns/props/dun/dun_wood_crate_003.mdl"
+-- Fallback HL2 si le workshop n'est pas monté
+ConstructionSystem.Config.CrateModel = "models/props_junk/wood_crate001a.mdl"
+ConstructionSystem.Config.CrateModelPreferred = "models/hts/ww2ns/props/dun/dun_wood_crate_003.mdl"
 ConstructionSystem.Config.CrateMaxMaterials = 30   -- Nombre de props matérialisables par caisse
 ConstructionSystem.Config.CratePrice = 1            -- Prix F4
 
