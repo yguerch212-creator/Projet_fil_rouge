@@ -12,32 +12,34 @@ local groupCounter = 0
 -- HELPERS
 ---------------------------------------------------------------------------
 
---- Trouver le ghost le plus proche dans la direction du regard
+--- Trouver le ghost que le joueur vise (ray vs OBB)
 local function FindGhostInSight(ply, maxDist)
     maxDist = maxDist or 500
     local eyePos = ply:EyePos()
     local aimVec = ply:GetAimVector()
 
     local bestGhost = nil
-    local bestScore = 0
+    local bestDist = maxDist
 
     for _, ent in ipairs(ents.FindByClass("construction_ghost")) do
         if IsValid(ent) then
-            local entPos = ent:GetPos()
-            local toEnt = entPos - eyePos
-            local dist = toEnt:Length()
+            local dist = eyePos:Distance(ent:GetPos())
+            if dist < bestDist then
+                -- Utiliser IntersectRayWithOBB pour tester si le ray touche la bounding box
+                local mins, maxs = ent:GetModelBounds()
+                if mins and maxs then
+                    -- Agrandir un peu la hitbox pour plus de tolérance
+                    mins = mins - Vector(5, 5, 5)
+                    maxs = maxs + Vector(5, 5, 5)
 
-            if dist < maxDist then
-                local dir = toEnt:GetNormalized()
-                local dot = aimVec:Dot(dir)
+                    local hitPos = util.IntersectRayWithOBB(eyePos, aimVec * maxDist, ent:GetPos(), ent:GetAngles(), mins, maxs)
 
-                -- Plus le ghost est proche et aligné, meilleur le score
-                -- dot > 0.95 = ~18 degrés de tolérance
-                if dot > 0.95 then
-                    local score = dot * (1 - dist / maxDist)
-                    if score > bestScore then
-                        bestScore = score
-                        bestGhost = ent
+                    if hitPos then
+                        local hitDist = eyePos:Distance(hitPos)
+                        if hitDist < bestDist then
+                            bestDist = hitDist
+                            bestGhost = ent
+                        end
                     end
                 end
             end
