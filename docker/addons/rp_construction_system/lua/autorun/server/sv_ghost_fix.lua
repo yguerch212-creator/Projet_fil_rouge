@@ -1,26 +1,23 @@
--- HOTFIX v2: Force materialize le ghost le plus proche
 timer.Simple(5, function()
     net.Receive("Construction_MaterializeGhost", function(len, ply)
         if not IsValid(ply) then return end
 
         local ok, err = pcall(function()
-            -- Cooldown
             if ply.LastGhostUse and ply.LastGhostUse > CurTime() then return end
             ply.LastGhostUse = CurTime() + 0.5
 
-            -- Caisse
             local crate = ply.ActiveCrate
             if not IsValid(crate) then
                 ply:ChatPrint("[SV] Pas de caisse!")
                 return
             end
 
-            if crate:GetMaterials() <= 0 then
+            local mats = crate.Materials or 0
+            if mats <= 0 then
                 ply:ChatPrint("[SV] Caisse vide!")
                 return
             end
 
-            -- Ghost le plus proche (skip OBB, juste distance)
             local eyePos = ply:EyePos()
             local closest = nil
             local closestDist = 300
@@ -40,7 +37,6 @@ timer.Simple(5, function()
                 return
             end
 
-            -- Matérialiser directement
             crate:UseMaterial()
             local prop = closest:Materialize(ply)
 
@@ -50,7 +46,7 @@ timer.Simple(5, function()
                 undo.SetPlayer(ply)
                 undo.Finish()
                 ply:AddCleanup("props", prop)
-                ply:ChatPrint("[SV] OK! " .. crate:GetMaterials() .. " mat restants")
+                ply:ChatPrint("[SV] OK! " .. (crate.Materials or 0) .. " mat restants")
             else
                 ply:ChatPrint("[SV] Echec materialize!")
             end
@@ -61,5 +57,5 @@ timer.Simple(5, function()
         end
     end)
 
-    print("[Construction] HOTFIX v2 loaded")
+    print("[Construction] HOTFIX v3 loaded")
 end)

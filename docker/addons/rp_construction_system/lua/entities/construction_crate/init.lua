@@ -1,15 +1,9 @@
---[[-----------------------------------------------------------------------
-    RP Construction System - Caisse de Matériaux (Server)
-    Contient X matériaux pour matérialiser des props fantômes
----------------------------------------------------------------------------]]
-
 AddCSLuaFile("shared.lua")
 AddCSLuaFile("cl_init.lua")
 
 include("shared.lua")
 
 function ENT:Initialize()
-    -- Choisir le modèle (préféré si disponible, sinon fallback)
     local preferred = ConstructionSystem.Config.CrateModelPreferred
     local fallback = ConstructionSystem.Config.CrateModel
     local model = util.IsValidModel(preferred) and preferred or fallback
@@ -26,13 +20,12 @@ function ENT:Initialize()
         phys:SetMass(50)
     end
 
-    -- Matériaux restants
     self.Materials = ConstructionSystem.Config.CrateMaxMaterials
     self:SetNWInt("materials", self.Materials)
     self:SetNWInt("max_materials", ConstructionSystem.Config.CrateMaxMaterials)
 end
 
-function ENT:GetMaterials()
+function ENT:GetRemainingMats()
     return self.Materials or 0
 end
 
@@ -43,9 +36,7 @@ function ENT:UseMaterial()
 
     if self.Materials <= 0 then
         timer.Simple(0.5, function()
-            if IsValid(self) then
-                self:Remove()
-            end
+            if IsValid(self) then self:Remove() end
         end)
     end
 
@@ -54,8 +45,6 @@ end
 
 function ENT:Use(activator, caller)
     if not IsValid(activator) or not activator:IsPlayer() then return end
-
-    -- Cooldown
     if self.LastUse and self.LastUse > CurTime() then return end
     self.LastUse = CurTime() + 0.5
 
@@ -65,7 +54,7 @@ function ENT:Use(activator, caller)
     end
 
     activator.ActiveCrate = self
-    activator:SetNWEntity("ActiveCrate", self)  -- Sync au client
+    activator:SetNWEntity("ActiveCrate", self)
     DarkRP.notify(activator, 0, 4, "Caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
 end
 
