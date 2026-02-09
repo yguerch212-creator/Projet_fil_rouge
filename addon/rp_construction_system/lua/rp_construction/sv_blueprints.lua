@@ -93,9 +93,10 @@ local function ValidateBlueprintData(data)
 
     local count = 0
     for key, entData in pairs(data.Entities) do
+        if type(entData) ~= "table" then continue end
         count = count + 1
 
-        -- Vérifier que c'est un prop_physics
+        -- Vérifier que c'est un prop_physics (ou pas de classe = par défaut prop_physics)
         if entData.Class and entData.Class ~= "prop_physics" then
             return false, "Classe interdite: " .. tostring(entData.Class)
         end
@@ -105,8 +106,8 @@ local function ValidateBlueprintData(data)
             return false, "Modèle manquant"
         end
 
-        -- Vérifier les positions/angles
-        if not entData.Pos or type(entData.Pos) ~= "table" then
+        -- Vérifier les positions (accepte Vector ou table avec x/y/z)
+        if not entData.Pos then
             return false, "Position manquante"
         end
     end
@@ -116,6 +117,8 @@ local function ValidateBlueprintData(data)
     if maxProps > 0 and count > maxProps then
         return false, "Trop de props (" .. count .. "/" .. maxProps .. ")"
     end
+
+    if count == 0 then return false, "Blueprint vide" end
 
     return true, count
 end
@@ -255,15 +258,15 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
         return
     end
 
-    -- Reconstruire les Vector/Angle
-    local dupeData = RebuildVectors(blueprint.data)
-
-    -- Valider côté serveur (blacklist, limites)
-    local valid, result = ValidateBlueprintData(dupeData)
+    -- Valider côté serveur AVANT de reconstruire (blacklist, limites)
+    local valid, result = ValidateBlueprintData(blueprint.data)
     if not valid then
         DarkRP.notify(ply, 1, 4, "Blueprint rejeté: " .. tostring(result))
         return
     end
+
+    -- Reconstruire les Vector/Angle après validation
+    local dupeData = RebuildVectors(blueprint.data)
 
     -- Préparer la preview pour le client (données légères)
     local previewData = { Entities = {} }
