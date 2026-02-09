@@ -16,11 +16,16 @@ local PlacementPanel = nil
 
 -- Offsets & Options
 local Offset = {
+    x = 0,
+    y = 0,
     height = 0,
     pitch = 0,
     yaw = 0,
     roll = 0,
 }
+
+-- Position originale du blueprint (centre absolu quand sauvegardé)
+local OriginalCenter = Vector(0, 0, 0)
 
 local Options = {
     originalPos = false,         -- Coller à la position originale
@@ -107,20 +112,20 @@ function ConstructionSystem.Placement.Start(blueprintId, data)
     Offset.roll = 0
 
     -- Récupérer la position originale si disponible
+    OriginalCenter = Vector(0, 0, 0)
     if data.OriginalCenter then
         local oc = data.OriginalCenter
         if type(oc) == "Vector" then
-            OriginalCenter = oc
+            OriginalCenter = Vector(oc.x, oc.y, oc.z)
         elseif type(oc) == "table" then
-            OriginalCenter = Vector(
-                tonumber(oc.x) or tonumber(oc["1"]) or 0,
-                tonumber(oc.y) or tonumber(oc["2"]) or 0,
-                tonumber(oc.z) or tonumber(oc["3"]) or 0
-            )
+            -- Gère les deux formats: {x=,y=,z=} et {__type="Vector",x=,y=,z=}
+            local x = tonumber(oc.x) or 0
+            local y = tonumber(oc.y) or 0
+            local z = tonumber(oc.z) or 0
+            OriginalCenter = Vector(x, y, z)
         end
-    else
-        OriginalCenter = Vector(0, 0, 0)
     end
+    print("[Construction] OriginalCenter: " .. tostring(OriginalCenter) .. " (length: " .. math.Round(OriginalCenter:Length()) .. ")")
 
     -- Compter props et constraints
     local propCount = 0
@@ -224,18 +229,18 @@ local function RotateVector(vec, pitch, yaw, roll)
     return rotated
 end
 
-local OriginalCenter = Vector(0, 0, 0)
-
 local function GetPlacementPosition()
     local ply = LocalPlayer()
     if not IsValid(ply) then return Vector(0, 0, 0) end
 
-    if Options.originalPos and OriginalCenter:Length() > 0 then
-        return OriginalCenter + Vector(0, 0, Offset.height)
+    local offsetVec = Vector(Offset.x, Offset.y, Offset.height)
+
+    if Options.originalPos and OriginalCenter:Length() > 1 then
+        return OriginalCenter + offsetVec
     end
 
     local tr = ply:GetEyeTrace()
-    return tr.HitPos + Vector(0, 0, 10 + Offset.height)
+    return tr.HitPos + Vector(0, 0, 10) + offsetVec
 end
 
 ---------------------------------------------------------------------------
@@ -388,7 +393,9 @@ function ConstructionSystem.Placement.OpenPanel()
     -- ===================== OFFSETS =====================
     SectionTitle("Décalage")
 
-    local heightSlider = AddSlider("Hauteur", -2500, 2500, 0, 0, function(v) Offset.height = v end)
+    local xSlider = AddSlider("X (avant/arrière)", -2500, 2500, 0, 0, function(v) Offset.x = v end)
+    local ySlider = AddSlider("Y (gauche/droite)", -2500, 2500, 0, 0, function(v) Offset.y = v end)
+    local heightSlider = AddSlider("Hauteur (Z)", -2500, 2500, 0, 0, function(v) Offset.height = v end)
     local pitchSlider = AddSlider("Pitch", -180, 180, 0, 1, function(v) Offset.pitch = v end)
     local yawSlider = AddSlider("Yaw", -180, 180, 0, 1, function(v) Offset.yaw = v end)
     local rollSlider = AddSlider("Roll", -180, 180, 0, 1, function(v) Offset.roll = v end)
@@ -405,7 +412,10 @@ function ConstructionSystem.Placement.OpenPanel()
         draw.SimpleText("↺ Reset Offsets", "DermaDefaultBold", w/2, h/2, Colors.textDim, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     end
     btnReset.DoClick = function()
-        Offset.height = 0; Offset.pitch = 0; Offset.yaw = 0; Offset.roll = 0
+        Offset.x = 0; Offset.y = 0; Offset.height = 0
+        Offset.pitch = 0; Offset.yaw = 0; Offset.roll = 0
+        if IsValid(xSlider) then xSlider:SetValue(0) end
+        if IsValid(ySlider) then ySlider:SetValue(0) end
         if IsValid(heightSlider) then heightSlider:SetValue(0) end
         if IsValid(pitchSlider) then pitchSlider:SetValue(0) end
         if IsValid(yawSlider) then yawSlider:SetValue(0) end
