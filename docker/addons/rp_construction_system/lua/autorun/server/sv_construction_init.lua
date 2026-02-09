@@ -24,8 +24,12 @@ include("rp_construction/sv_database.lua")
 -- 4. Module sélection (server)
 include("rp_construction/sv_selection.lua")
 
--- 5. Fichiers client à envoyer
+-- 5. Module blueprints (server)
+include("rp_construction/sv_blueprints.lua")
+
+-- 6. Fichiers client à envoyer
 AddCSLuaFile("rp_construction/cl_selection.lua")
+AddCSLuaFile("rp_construction/cl_menu.lua")
 
 -- 6. Connexion à MySQL une fois le serveur prêt
 hook.Add("InitPostEntity", "Construction_DBConnect", function()
