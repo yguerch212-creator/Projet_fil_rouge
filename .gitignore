@@ -16,3 +16,4 @@ backups/
 passwords.txt
 references/
 references/
+docker/lua-bin/*.dll

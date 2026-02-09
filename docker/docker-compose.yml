@@ -18,6 +18,7 @@ services:
       - ./addons:/home/gmod/server/garrysmod/addons
       - ./gamemodes/darkrp:/home/gmod/server/garrysmod/gamemodes/darkrp
       - ./server-config/server.cfg:/home/gmod/server/garrysmod/cfg/server.cfg
+      - ./lua-bin:/home/gmod/server/garrysmod/lua/bin
     environment:
       - NAME=ProjetFilRouge-DevServer
       - GAMEMODE=darkrp
