@@ -219,7 +219,7 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
     end)
 end)
 
---- Charger un blueprint → spawn des GHOSTS
+--- Charger un blueprint → envoyer preview au client
 net.Receive("Construction_LoadBlueprint", function(len, ply)
     if not IsValid(ply) or not ply:Alive() then return end
 
@@ -244,20 +244,94 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
             return
         end
 
-        -- Position de spawn : devant le joueur
-        local tr = util.TraceLine({
-            start = ply:EyePos(),
-            endpos = ply:EyePos() + ply:GetAimVector() * 300,
-            filter = ply
-        })
-        local spawnPos = tr.HitPos + Vector(0, 0, 10)
-
-        -- Spawn en tant que GHOSTS (pas de vrais props)
-        local ok, groupID = ConstructionSystem.Ghosts.SpawnFromBlueprint(ply, dupeData, spawnPos)
-        if not ok then
-            DarkRP.notify(ply, 1, 4, "Erreur spawn : " .. tostring(groupID))
+        -- Préparer les données légères pour le client (modèles + positions relatives)
+        local previewData = { Entities = {} }
+        for key, entData in pairs(dupeData.Entities) do
+            previewData.Entities[key] = {
+                Model = entData.Model,
+                Pos = entData.Pos,
+                Ang = entData.Ang,
+                Skin = entData.Skin,
+                Material = entData.Material,
+            }
         end
+
+        -- Compresser et envoyer au client
+        local json = util.TableToJSON(previewData)
+        local compressed = util.Compress(json)
+
+        if not compressed then
+            DarkRP.notify(ply, 1, 4, "Erreur compression preview")
+            return
+        end
+
+        -- Stocker les données complètes pour le spawn (quand le client confirme)
+        ply.PendingBlueprint = {
+            id = blueprintId,
+            data = dupeData,
+        }
+
+        net.Start("Construction_SendPreview")
+        net.WriteUInt(blueprintId, 32)
+        net.WriteUInt(#compressed, 32)
+        net.WriteData(compressed, #compressed)
+        net.Send(ply)
     end)
+end)
+
+--- Confirmer le placement → spawn des GHOSTS
+net.Receive("Construction_ConfirmPlacement", function(len, ply)
+    if not IsValid(ply) or not ply:Alive() then return end
+
+    local blueprintId = net.ReadUInt(32)
+    local spawnPos = net.ReadVector()
+    local rotation = net.ReadFloat()
+
+    -- Vérifier que le joueur a bien un blueprint en attente
+    if not ply.PendingBlueprint or ply.PendingBlueprint.id ~= blueprintId then
+        DarkRP.notify(ply, 1, 3, "Aucun blueprint en attente")
+        return
+    end
+
+    -- Validation: position pas trop loin du joueur
+    if spawnPos:Distance(ply:GetPos()) > 5000 then
+        DarkRP.notify(ply, 1, 3, "Position trop éloignée")
+        return
+    end
+
+    -- Appliquer la rotation aux données
+    local dupeData = ply.PendingBlueprint.data
+    local rotatedData = { Entities = {}, Constraints = dupeData.Constraints }
+    local rad = math.rad(rotation)
+    local cos, sin = math.cos(rad), math.sin(rad)
+
+    for key, entData in pairs(dupeData.Entities) do
+        local newData = table.Copy(entData)
+        -- Rotation du vecteur offset
+        if newData.Pos then
+            local ox, oy = newData.Pos.x or 0, newData.Pos.y or 0
+            newData.Pos = Vector(ox * cos - oy * sin, ox * sin + oy * cos, newData.Pos.z or 0)
+        end
+        -- Rotation de l'angle
+        if newData.Ang then
+            newData.Ang = Angle(newData.Ang.p or 0, (newData.Ang.y or 0) + rotation, newData.Ang.r or 0)
+        end
+        rotatedData.Entities[key] = newData
+    end
+
+    -- Spawn des GHOSTS à la position confirmée
+    local ok, groupID = ConstructionSystem.Ghosts.SpawnFromBlueprint(ply, rotatedData, spawnPos)
+    if not ok then
+        DarkRP.notify(ply, 1, 4, "Erreur spawn : " .. tostring(groupID))
+    end
+
+    ply.PendingBlueprint = nil
+end)
+
+--- Annuler le placement
+net.Receive("Construction_CancelPlacement", function(len, ply)
+    if not IsValid(ply) then return end
+    ply.PendingBlueprint = nil
 end)
 
 --- Supprimer un blueprint

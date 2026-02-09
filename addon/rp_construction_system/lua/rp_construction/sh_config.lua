@@ -107,4 +107,8 @@ ConstructionSystem.NetMessages = {
     "Construction_SpawnGhosts",
     "Construction_RemoveGhosts",
     "Construction_MaterializeGhost",
+    -- Placement
+    "Construction_SendPreview",
+    "Construction_ConfirmPlacement",
+    "Construction_CancelPlacement",
 }

@@ -1,12 +1,78 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Interface Utilisateur (Client)
-    Menu principal Derma pour gérer les blueprints
+    Menu principal moderne pour gérer les blueprints
 ---------------------------------------------------------------------------]]
 
 ConstructionSystem.Menu = ConstructionSystem.Menu or {}
 
 -- Cache des blueprints reçus du serveur
 local cachedBlueprints = {}
+
+-- Rayon de sélection client (persiste entre sessions)
+ConstructionSystem.ClientRadius = ConstructionSystem.ClientRadius or (ConstructionSystem.Config.SelectionRadiusDefault or 500)
+
+---------------------------------------------------------------------------
+-- COULEURS & STYLE
+---------------------------------------------------------------------------
+
+local Colors = {
+    bg          = Color(18, 18, 22),
+    bgLight     = Color(28, 28, 35),
+    bgPanel     = Color(35, 35, 42),
+    accent      = Color(59, 130, 246),    -- Bleu
+    accentHover = Color(96, 165, 250),
+    accentDark  = Color(37, 99, 235),
+    success     = Color(34, 197, 94),
+    danger      = Color(239, 68, 68),
+    dangerHover = Color(248, 113, 113),
+    warning     = Color(245, 158, 11),
+    text        = Color(229, 231, 235),
+    textDim     = Color(156, 163, 175),
+    textMuted   = Color(107, 114, 128),
+    border      = Color(55, 55, 65),
+    white       = Color(255, 255, 255),
+}
+
+-- Fonts custom
+surface.CreateFont("ConstructionTitle", {
+    font = "Roboto", size = 22, weight = 700,
+    antialias = true,
+})
+surface.CreateFont("ConstructionHeader", {
+    font = "Roboto", size = 16, weight = 600,
+    antialias = true,
+})
+surface.CreateFont("ConstructionBody", {
+    font = "Roboto", size = 14, weight = 400,
+    antialias = true,
+})
+surface.CreateFont("ConstructionSmall", {
+    font = "Roboto", size = 12, weight = 400,
+    antialias = true,
+})
+surface.CreateFont("ConstructionButton", {
+    font = "Roboto", size = 14, weight = 600,
+    antialias = true,
+})
+
+---------------------------------------------------------------------------
+-- HELPERS UI
+---------------------------------------------------------------------------
+
+local function StyledButton(parent, text, color, hoverColor, textColor)
+    local btn = vgui.Create("DButton", parent)
+    btn:SetText("")
+    btn.label = text
+    btn.bgColor = color
+    btn.hoverColor = hoverColor or Color(color.r + 30, color.g + 30, color.b + 30)
+    btn.textColor = textColor or Colors.white
+    btn.Paint = function(self, w, h)
+        local c = self:IsHovered() and self.hoverColor or self.bgColor
+        draw.RoundedBox(6, 0, 0, w, h, c)
+        draw.SimpleText(self.label, "ConstructionButton", w/2, h/2, self.textColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    end
+    return btn
+end
 
 ---------------------------------------------------------------------------
 -- RÉCEPTION DES DONNÉES
@@ -28,7 +94,6 @@ net.Receive("Construction_SendBlueprints", function()
         })
     end
 
-    -- Si le menu est ouvert, rafraîchir la liste
     if IsValid(ConstructionSystem.Menu.Frame) and ConstructionSystem.Menu.RefreshList then
         ConstructionSystem.Menu.RefreshList()
     end
@@ -43,259 +108,384 @@ net.Receive("Construction_OpenMenu", function()
 end)
 
 function ConstructionSystem.Menu.Open()
-    -- Fermer si déjà ouvert
     if IsValid(ConstructionSystem.Menu.Frame) then
         ConstructionSystem.Menu.Frame:Remove()
     end
 
-    -- Demander les blueprints au serveur
+    -- Ne pas ouvrir pendant le placement
+    if ConstructionSystem.Placement and ConstructionSystem.Placement.IsActive() then
+        chat.AddText(Colors.warning, "[Construction] ", Colors.text, "Terminez le placement avant d'ouvrir le menu")
+        return
+    end
+
     net.Start("Construction_RequestBlueprints")
     net.SendToServer()
 
-    -- Créer la fenêtre principale
+    -- Frame principale
     local frame = vgui.Create("DFrame")
-    frame:SetTitle("Systeme de Construction RP - v" .. ConstructionSystem.Config.Version)
-    frame:SetSize(math.min(ScrW() * 0.6, 800), math.min(ScrH() * 0.7, 550))
+    frame:SetTitle("")
+    frame:SetSize(math.min(ScrW() * 0.55, 750), math.min(ScrH() * 0.65, 520))
     frame:Center()
     frame:MakePopup()
     frame:SetDraggable(true)
     frame:SetSizable(false)
+    frame:ShowCloseButton(false)
+
     frame.Paint = function(self, w, h)
-        draw.RoundedBox(8, 0, 0, w, h, Color(35, 35, 40, 245))
-        draw.RoundedBox(8, 0, 0, w, 28, Color(0, 100, 200, 255))
-        draw.SimpleText(self:GetTitle(), "DermaDefaultBold", w / 2, 14, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        -- Ombre
+        draw.RoundedBox(10, -2, -2, w+4, h+4, Color(0, 0, 0, 80))
+        -- Background
+        draw.RoundedBox(8, 0, 0, w, h, Colors.bg)
+        -- Header
+        draw.RoundedBoxEx(8, 0, 0, w, 48, Colors.bgLight, true, true, false, false)
+        -- Ligne accent sous le header
+        surface.SetDrawColor(Colors.accent)
+        surface.DrawRect(0, 48, w, 2)
+        -- Titre
+        draw.SimpleText("Construction System", "ConstructionTitle", 20, 24, Colors.white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+        draw.SimpleText("v" .. ConstructionSystem.Config.Version, "ConstructionSmall", w - 50, 24, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
     end
+
+    -- Bouton close custom
+    local btnClose = vgui.Create("DButton", frame)
+    btnClose:SetPos(frame:GetWide() - 38, 8)
+    btnClose:SetSize(30, 30)
+    btnClose:SetText("")
+    btnClose.Paint = function(self, w, h)
+        if self:IsHovered() then
+            draw.RoundedBox(4, 0, 0, w, h, Colors.danger)
+        end
+        draw.SimpleText("✕", "ConstructionHeader", w/2, h/2, Colors.textDim, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    end
+    btnClose.DoClick = function() frame:Remove() end
 
     ConstructionSystem.Menu.Frame = frame
 
-    -- Onglets
-    local tabs = vgui.Create("DPropertySheet", frame)
-    tabs:Dock(FILL)
-    tabs:DockMargin(5, 5, 5, 5)
+    -- Container sous le header
+    local container = vgui.Create("DPanel", frame)
+    container:SetPos(0, 50)
+    container:SetSize(frame:GetWide(), frame:GetTall() - 50)
+    container.Paint = function() end
 
-    -- Onglet 1 : Mes Blueprints
-    local myBPPanel = ConstructionSystem.Menu.CreateMyBlueprintsPanel(tabs)
-    tabs:AddSheet("Mes Blueprints", myBPPanel, "icon16/brick.png")
+    -- Sidebar (navigation)
+    local sidebar = vgui.Create("DPanel", container)
+    sidebar:Dock(LEFT)
+    sidebar:SetWide(160)
+    sidebar:DockMargin(0, 0, 0, 0)
+    sidebar.Paint = function(self, w, h)
+        draw.RoundedBox(0, 0, 0, w, h, Colors.bgLight)
+        surface.SetDrawColor(Colors.border)
+        surface.DrawRect(w-1, 0, 1, h)
+    end
 
-    -- Onglet 2 : Sauvegarder
-    local savePanel = ConstructionSystem.Menu.CreateSavePanel(tabs)
-    tabs:AddSheet("Sauvegarder", savePanel, "icon16/disk.png")
+    -- Content area
+    local content = vgui.Create("DPanel", container)
+    content:Dock(FILL)
+    content:DockMargin(0, 0, 0, 0)
+    content.Paint = function() end
 
-    -- Onglet 3 : Paramètres
-    local settingsPanel = ConstructionSystem.Menu.CreateSettingsPanel(tabs)
-    tabs:AddSheet("Parametres", settingsPanel, "icon16/wrench.png")
+    -- Pages
+    local pages = {}
+    local activeTab = nil
 
-    -- Onglet 4 : Infos
-    local infoPanel = ConstructionSystem.Menu.CreateInfoPanel(tabs)
-    tabs:AddSheet("Infos", infoPanel, "icon16/information.png")
+    local function ShowPage(name)
+        for k, p in pairs(pages) do
+            p:SetVisible(k == name)
+        end
+        activeTab = name
+        -- Refresh sidebar buttons
+        if sidebar.RefreshButtons then sidebar:RefreshButtons() end
+    end
+
+    -- Créer les pages
+    pages["blueprints"] = ConstructionSystem.Menu.CreateBlueprintsPage(content)
+    pages["save"] = ConstructionSystem.Menu.CreateSavePage(content)
+    pages["settings"] = ConstructionSystem.Menu.CreateSettingsPage(content)
+    pages["help"] = ConstructionSystem.Menu.CreateHelpPage(content)
+
+    for _, p in pairs(pages) do
+        p:Dock(FILL)
+        p:DockMargin(10, 10, 10, 10)
+        p:SetVisible(false)
+    end
+
+    -- Sidebar buttons
+    local tabs = {
+        {name = "blueprints", label = "Blueprints", icon = "▦"},
+        {name = "save", label = "Sauvegarder", icon = "💾"},
+        {name = "settings", label = "Paramètres", icon = "⚙"},
+        {name = "help", label = "Aide", icon = "?"},
+    }
+
+    local tabButtons = {}
+    for i, tab in ipairs(tabs) do
+        local btn = vgui.Create("DButton", sidebar)
+        btn:Dock(TOP)
+        btn:DockMargin(8, i == 1 and 10 or 2, 8, 0)
+        btn:SetTall(36)
+        btn:SetText("")
+        btn.tabName = tab.name
+        btn.Paint = function(self, w, h)
+            local isActive = (activeTab == self.tabName)
+            local bg = isActive and Colors.accent or (self:IsHovered() and Colors.bgPanel or Color(0,0,0,0))
+            draw.RoundedBox(6, 0, 0, w, h, bg)
+            local textCol = isActive and Colors.white or Colors.textDim
+            draw.SimpleText(tab.icon .. "  " .. tab.label, "ConstructionButton", 14, h/2, textCol, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+        end
+        btn.DoClick = function() ShowPage(tab.name) end
+        tabButtons[tab.name] = btn
+    end
+
+    sidebar.RefreshButtons = function() end  -- Les boutons se repaint automatiquement
+
+    ShowPage("blueprints")
 end
 
 ---------------------------------------------------------------------------
--- ONGLET : MES BLUEPRINTS
+-- PAGE : BLUEPRINTS
 ---------------------------------------------------------------------------
 
-function ConstructionSystem.Menu.CreateMyBlueprintsPanel(parent)
-    local panel = vgui.Create("DPanel", parent)
-    panel:Dock(FILL)
-    panel.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, Color(45, 45, 50, 200))
+function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
+    local page = vgui.Create("DPanel", parent)
+    page.Paint = function() end
+
+    -- Header
+    local header = vgui.Create("DPanel", page)
+    header:Dock(TOP)
+    header:SetTall(30)
+    header.Paint = function(self, w, h)
+        draw.SimpleText("Mes Blueprints", "ConstructionHeader", 0, h/2, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+        draw.SimpleText(#cachedBlueprints .. " sauvegarde(s)", "ConstructionSmall", w, h/2, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
     end
 
-    -- Liste des blueprints
-    local list = vgui.Create("DListView", panel)
-    list:Dock(FILL)
-    list:DockMargin(5, 5, 5, 45)
-    list:SetMultiSelect(false)
-    list:AddColumn("ID"):SetFixedWidth(40)
-    list:AddColumn("Nom"):SetFixedWidth(180)
-    list:AddColumn("Props"):SetFixedWidth(50)
-    list:AddColumn("Public"):SetFixedWidth(50)
-    list:AddColumn("Date"):SetFixedWidth(120)
-    list:AddColumn("Description")
-
-    -- Fonction de rafraîchissement
-    ConstructionSystem.Menu.RefreshList = function()
-        list:Clear()
-        for _, bp in ipairs(cachedBlueprints) do
-            list:AddLine(
-                bp.id,
-                bp.name,
-                bp.prop_count,
-                bp.is_public and "Oui" or "Non",
-                bp.created_at or "",
-                bp.description or ""
-            )
-        end
+    -- Liste
+    local listContainer = vgui.Create("DPanel", page)
+    listContainer:Dock(FILL)
+    listContainer:DockMargin(0, 8, 0, 8)
+    listContainer.Paint = function(self, w, h)
+        draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
     end
 
-    -- Rafraîchir immédiatement avec le cache
-    ConstructionSystem.Menu.RefreshList()
+    local scroll = vgui.Create("DScrollPanel", listContainer)
+    scroll:Dock(FILL)
+    scroll:DockMargin(4, 4, 4, 4)
 
-    -- Barre de boutons en bas
-    local btnBar = vgui.Create("DPanel", panel)
-    btnBar:Dock(BOTTOM)
-    btnBar:SetTall(35)
-    btnBar:DockMargin(5, 0, 5, 5)
-    btnBar.Paint = function() end
+    local selectedBP = nil
 
-    -- Bouton Charger
-    local btnLoad = vgui.Create("DButton", btnBar)
-    btnLoad:Dock(LEFT)
-    btnLoad:SetWide(120)
-    btnLoad:DockMargin(0, 0, 5, 0)
-    btnLoad:SetText("Charger (Fantome)")
-    btnLoad:SetTextColor(Color(255, 255, 255))
-    btnLoad.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, self:IsHovered() and Color(0, 130, 50) or Color(0, 100, 40))
-    end
-    btnLoad.DoClick = function()
-        local line = list:GetSelectedLine()
-        if not line then
-            Derma_Message("Selectionne un blueprint d'abord !", "Erreur", "OK")
+    local function RefreshList()
+        scroll:Clear()
+        selectedBP = nil
+
+        if #cachedBlueprints == 0 then
+            local empty = vgui.Create("DPanel", scroll)
+            empty:Dock(TOP)
+            empty:SetTall(80)
+            empty.Paint = function(self, w, h)
+                draw.SimpleText("Aucun blueprint sauvegardé", "ConstructionBody", w/2, h/2 - 10, Colors.textMuted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                draw.SimpleText("Sélectionnez des props et sauvegardez !", "ConstructionSmall", w/2, h/2 + 10, Colors.textMuted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            end
             return
         end
-        local id = tonumber(list:GetLine(line):GetValue(1))
-        if id then
-            net.Start("Construction_LoadBlueprint")
-            net.WriteUInt(id, 32)
-            net.SendToServer()
-            if IsValid(ConstructionSystem.Menu.Frame) then
-                ConstructionSystem.Menu.Frame:Remove()
+
+        for _, bp in ipairs(cachedBlueprints) do
+            local item = vgui.Create("DButton", scroll)
+            item:Dock(TOP)
+            item:DockMargin(2, 2, 2, 0)
+            item:SetTall(50)
+            item:SetText("")
+            item.bp = bp
+
+            item.Paint = function(self, w, h)
+                local isSelected = (selectedBP and selectedBP.id == self.bp.id)
+                local bg = isSelected and Color(Colors.accent.r, Colors.accent.g, Colors.accent.b, 40) or
+                           (self:IsHovered() and Colors.bgPanel or Color(0,0,0,0))
+                draw.RoundedBox(4, 0, 0, w, h, bg)
+
+                -- Bord gauche si sélectionné
+                if isSelected then
+                    surface.SetDrawColor(Colors.accent)
+                    surface.DrawRect(0, 4, 3, h-8)
+                end
+
+                -- Nom
+                draw.SimpleText(self.bp.name, "ConstructionButton", 14, 14, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+                -- Infos
+                local info = self.bp.prop_count .. " props"
+                if self.bp.description and self.bp.description ~= "" then
+                    info = info .. "  •  " .. self.bp.description
+                end
+                draw.SimpleText(info, "ConstructionSmall", 14, 32, Colors.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+                -- Date
+                draw.SimpleText(self.bp.created_at or "", "ConstructionSmall", w - 8, h/2, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+            end
+
+            item.DoClick = function(self)
+                selectedBP = self.bp
+            end
+
+            item.DoDoubleClick = function(self)
+                -- Double-clic = charger directement
+                selectedBP = self.bp
+                net.Start("Construction_LoadBlueprint")
+                net.WriteUInt(self.bp.id, 32)
+                net.SendToServer()
+                if IsValid(ConstructionSystem.Menu.Frame) then
+                    ConstructionSystem.Menu.Frame:Remove()
+                end
             end
         end
     end
 
-    -- Bouton Supprimer
-    local btnDelete = vgui.Create("DButton", btnBar)
-    btnDelete:Dock(LEFT)
-    btnDelete:SetWide(100)
-    btnDelete:DockMargin(0, 0, 5, 0)
-    btnDelete:SetText("Supprimer")
-    btnDelete:SetTextColor(Color(255, 255, 255))
-    btnDelete.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, self:IsHovered() and Color(180, 30, 30) or Color(150, 20, 20))
-    end
-    btnDelete.DoClick = function()
-        local line = list:GetSelectedLine()
-        if not line then return end
-        local id = tonumber(list:GetLine(line):GetValue(1))
-        local name = list:GetLine(line):GetValue(2)
-        if id then
-            Derma_Query(
-                "Supprimer le blueprint '" .. name .. "' ?",
-                "Confirmation",
-                "Oui", function()
-                    net.Start("Construction_DeleteBlueprint")
-                    net.WriteUInt(id, 32)
-                    net.SendToServer()
-                end,
-                "Non", function() end
-            )
+    ConstructionSystem.Menu.RefreshList = RefreshList
+    RefreshList()
+
+    -- Boutons en bas
+    local btnBar = vgui.Create("DPanel", page)
+    btnBar:Dock(BOTTOM)
+    btnBar:SetTall(38)
+    btnBar.Paint = function() end
+
+    local btnLoad = StyledButton(btnBar, "▶ Charger", Colors.accent, Colors.accentHover)
+    btnLoad:Dock(LEFT)
+    btnLoad:SetWide(130)
+    btnLoad:DockMargin(0, 0, 6, 0)
+    btnLoad.DoClick = function()
+        if not selectedBP then
+            chat.AddText(Colors.warning, "[Construction] Sélectionnez un blueprint")
+            return
+        end
+        net.Start("Construction_LoadBlueprint")
+        net.WriteUInt(selectedBP.id, 32)
+        net.SendToServer()
+        if IsValid(ConstructionSystem.Menu.Frame) then
+            ConstructionSystem.Menu.Frame:Remove()
         end
     end
 
-    -- Bouton Rafraîchir
-    local btnRefresh = vgui.Create("DButton", btnBar)
-    btnRefresh:Dock(LEFT)
-    btnRefresh:SetWide(90)
-    btnRefresh:SetText("Rafraichir")
-    btnRefresh:SetTextColor(Color(255, 255, 255))
-    btnRefresh.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, self:IsHovered() and Color(60, 60, 70) or Color(50, 50, 60))
+    local btnDelete = StyledButton(btnBar, "✕ Supprimer", Colors.danger, Colors.dangerHover)
+    btnDelete:Dock(LEFT)
+    btnDelete:SetWide(120)
+    btnDelete:DockMargin(0, 0, 6, 0)
+    btnDelete.DoClick = function()
+        if not selectedBP then return end
+        Derma_Query(
+            "Supprimer '" .. selectedBP.name .. "' ?",
+            "Confirmation",
+            "Supprimer", function()
+                net.Start("Construction_DeleteBlueprint")
+                net.WriteUInt(selectedBP.id, 32)
+                net.SendToServer()
+            end,
+            "Annuler", function() end
+        )
     end
+
+    local btnRefresh = StyledButton(btnBar, "↻ Actualiser", Colors.bgPanel, Colors.border)
+    btnRefresh:Dock(LEFT)
+    btnRefresh:SetWide(110)
     btnRefresh.DoClick = function()
         net.Start("Construction_RequestBlueprints")
         net.SendToServer()
     end
 
-    return panel
+    return page
 end
 
 ---------------------------------------------------------------------------
--- ONGLET : SAUVEGARDER
+-- PAGE : SAUVEGARDER
 ---------------------------------------------------------------------------
 
-function ConstructionSystem.Menu.CreateSavePanel(parent)
-    local panel = vgui.Create("DPanel", parent)
-    panel:Dock(FILL)
-    panel.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, Color(45, 45, 50, 200))
+function ConstructionSystem.Menu.CreateSavePage(parent)
+    local page = vgui.Create("DPanel", parent)
+    page.Paint = function() end
+
+    -- Header
+    local header = vgui.Create("DPanel", page)
+    header:Dock(TOP)
+    header:SetTall(30)
+    header.Paint = function(self, w, h)
+        draw.SimpleText("Sauvegarder un Blueprint", "ConstructionHeader", 0, h/2, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
     end
 
-    -- Infos sélection
-    local selInfo = vgui.Create("DLabel", panel)
-    selInfo:Dock(TOP)
-    selInfo:DockMargin(10, 10, 10, 5)
-    selInfo:SetTall(25)
-    selInfo:SetFont("DermaDefaultBold")
-    selInfo:SetTextColor(Color(0, 150, 255))
-
-    local selCount = ConstructionSystem.Selection.Count()
-    local maxP = ConstructionSystem.Config.MaxPropsPerBlueprint
-    local maxText = maxP > 0 and tostring(maxP) or "∞"
-    selInfo:SetText("Props selectionnes : " .. selCount .. " / " .. maxText)
+    -- Compteur de sélection
+    local selPanel = vgui.Create("DPanel", page)
+    selPanel:Dock(TOP)
+    selPanel:SetTall(50)
+    selPanel:DockMargin(0, 8, 0, 0)
+    selPanel.Paint = function(self, w, h)
+        draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
+        local count = ConstructionSystem.Selection.Count()
+        local maxP = ConstructionSystem.Config.MaxPropsPerBlueprint
+        local maxText = maxP > 0 and tostring(maxP) or "∞"
+        local col = (maxP > 0 and count >= maxP) and Colors.danger or Colors.accent
+        draw.SimpleText(count, "ConstructionTitle", 20, h/2, col, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+        draw.SimpleText("/ " .. maxText .. " props sélectionnés", "ConstructionBody", 55, h/2, Colors.textDim, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+    end
 
     -- Nom
-    local nameLabel = vgui.Create("DLabel", panel)
+    local nameLabel = vgui.Create("DLabel", page)
     nameLabel:Dock(TOP)
-    nameLabel:DockMargin(10, 10, 10, 2)
-    nameLabel:SetText("Nom du blueprint :")
-    nameLabel:SetTextColor(Color(200, 200, 200))
+    nameLabel:DockMargin(0, 16, 0, 4)
+    nameLabel:SetTall(16)
+    nameLabel:SetFont("ConstructionBody")
+    nameLabel:SetTextColor(Colors.textDim)
+    nameLabel:SetText("Nom du blueprint")
 
-    local nameEntry = vgui.Create("DTextEntry", panel)
+    local nameEntry = vgui.Create("DTextEntry", page)
     nameEntry:Dock(TOP)
-    nameEntry:DockMargin(10, 0, 10, 5)
-    nameEntry:SetTall(30)
-    nameEntry:SetPlaceholderText("Ex: Maison simple, Garage, Tour...")
+    nameEntry:SetTall(34)
+    nameEntry:SetFont("ConstructionBody")
+    nameEntry:SetPlaceholderText("Ex: Maison moderne, Garage, Base...")
+    nameEntry.Paint = function(self, w, h)
+        draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
+        if self:HasFocus() then
+            surface.SetDrawColor(Colors.accent)
+            surface.DrawOutlinedRect(0, 0, w, h, 1)
+        end
+        self:DrawTextEntryText(Colors.text, Colors.accent, Colors.text)
+    end
 
     -- Description
-    local descLabel = vgui.Create("DLabel", panel)
+    local descLabel = vgui.Create("DLabel", page)
     descLabel:Dock(TOP)
-    descLabel:DockMargin(10, 5, 10, 2)
-    descLabel:SetText("Description (optionnelle) :")
-    descLabel:SetTextColor(Color(200, 200, 200))
+    descLabel:DockMargin(0, 12, 0, 4)
+    descLabel:SetTall(16)
+    descLabel:SetFont("ConstructionBody")
+    descLabel:SetTextColor(Colors.textDim)
+    descLabel:SetText("Description (optionnelle)")
 
-    local descEntry = vgui.Create("DTextEntry", panel)
+    local descEntry = vgui.Create("DTextEntry", page)
     descEntry:Dock(TOP)
-    descEntry:DockMargin(10, 0, 10, 5)
-    descEntry:SetTall(30)
-    descEntry:SetPlaceholderText("Description de votre construction...")
-
-    -- Info
-    local infoLabel = vgui.Create("DLabel", panel)
-    infoLabel:Dock(TOP)
-    infoLabel:DockMargin(10, 10, 10, 5)
-    infoLabel:SetFont("DermaDefault")
-    infoLabel:SetTextColor(Color(100, 255, 100))
-    infoLabel:SetText("La sauvegarde enregistre la construction en base de donnees")
-
-    -- Bouton sauvegarder
-    local btnSave = vgui.Create("DButton", panel)
-    btnSave:Dock(TOP)
-    btnSave:DockMargin(10, 10, 10, 5)
-    btnSave:SetTall(40)
-    btnSave:SetText("SAUVEGARDER LE BLUEPRINT")
-    btnSave:SetTextColor(Color(255, 255, 255))
-    btnSave:SetFont("DermaDefaultBold")
-    btnSave.Paint = function(self, w, h)
-        local color = self:IsHovered() and Color(0, 130, 220) or Color(0, 100, 200)
-        if selCount == 0 then color = Color(80, 80, 80) end
-        draw.RoundedBox(6, 0, 0, w, h, color)
+    descEntry:SetTall(34)
+    descEntry:SetFont("ConstructionBody")
+    descEntry:SetPlaceholderText("Courte description de la construction...")
+    descEntry.Paint = function(self, w, h)
+        draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
+        if self:HasFocus() then
+            surface.SetDrawColor(Colors.accent)
+            surface.DrawOutlinedRect(0, 0, w, h, 1)
+        end
+        self:DrawTextEntryText(Colors.text, Colors.accent, Colors.text)
     end
+
+    -- Bouton save
+    local btnSave = StyledButton(page, "💾  SAUVEGARDER", Colors.accent, Colors.accentHover)
+    btnSave:Dock(TOP)
+    btnSave:DockMargin(0, 20, 0, 0)
+    btnSave:SetTall(42)
     btnSave.DoClick = function()
-        local name = nameEntry:GetValue()
-        if not name or string.Trim(name) == "" then
-            Derma_Message("Entre un nom pour le blueprint !", "Erreur", "OK")
+        local name = string.Trim(nameEntry:GetValue() or "")
+        if name == "" then
+            chat.AddText(Colors.danger, "[Construction] ", Colors.text, "Entrez un nom pour le blueprint")
             return
         end
-
         if ConstructionSystem.Selection.Count() == 0 then
-            Derma_Message("Selectionne des props d'abord avec le tool Blueprint Select !", "Erreur", "OK")
+            chat.AddText(Colors.danger, "[Construction] ", Colors.text, "Sélectionnez des props d'abord (LMB avec l'outil)")
             return
         end
 
         net.Start("Construction_SaveBlueprint")
-        net.WriteString(string.Trim(name))
+        net.WriteString(name)
         net.WriteString(string.Trim(descEntry:GetValue() or ""))
         net.SendToServer()
 
@@ -304,144 +494,133 @@ function ConstructionSystem.Menu.CreateSavePanel(parent)
         end
     end
 
-    -- Timer pour rafraîchir le compteur
-    timer.Create("Construction_UpdateSavePanel", 1, 0, function()
-        if not IsValid(panel) then
-            timer.Remove("Construction_UpdateSavePanel")
-            return
-        end
-        selCount = ConstructionSystem.Selection.Count()
-        if IsValid(selInfo) then
-            local mxP = ConstructionSystem.Config.MaxPropsPerBlueprint
-            local mxText = mxP > 0 and tostring(mxP) or "∞"
-            selInfo:SetText("Props selectionnes : " .. selCount .. " / " .. mxText)
-        end
-    end)
-
-    return panel
+    return page
 end
 
 ---------------------------------------------------------------------------
--- ONGLET : PARAMÈTRES
+-- PAGE : PARAMÈTRES
 ---------------------------------------------------------------------------
 
--- Variable client pour le rayon (persiste entre ouvertures du menu)
-ConstructionSystem.ClientRadius = ConstructionSystem.ClientRadius or (ConstructionSystem.Config.SelectionRadiusDefault or 500)
+function ConstructionSystem.Menu.CreateSettingsPage(parent)
+    local page = vgui.Create("DPanel", parent)
+    page.Paint = function() end
 
-function ConstructionSystem.Menu.CreateSettingsPanel(parent)
-    local panel = vgui.Create("DPanel", parent)
-    panel:Dock(FILL)
-    panel.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, Color(45, 45, 50, 200))
+    local header = vgui.Create("DPanel", page)
+    header:Dock(TOP)
+    header:SetTall(30)
+    header.Paint = function(self, w, h)
+        draw.SimpleText("Paramètres", "ConstructionHeader", 0, h/2, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
     end
 
-    -- Titre
-    local title = vgui.Create("DLabel", panel)
-    title:Dock(TOP)
-    title:DockMargin(10, 10, 10, 5)
-    title:SetFont("DermaDefaultBold")
-    title:SetTextColor(Color(0, 150, 255))
-    title:SetText("PARAMETRES DE SELECTION")
-
     -- Rayon de sélection
-    local radiusLabel = vgui.Create("DLabel", panel)
-    radiusLabel:Dock(TOP)
-    radiusLabel:DockMargin(10, 15, 10, 2)
-    radiusLabel:SetTextColor(Color(200, 200, 200))
-    radiusLabel:SetText("Rayon de selection (RMB) : " .. ConstructionSystem.ClientRadius .. " unites")
+    local radiusPanel = vgui.Create("DPanel", page)
+    radiusPanel:Dock(TOP)
+    radiusPanel:SetTall(90)
+    radiusPanel:DockMargin(0, 10, 0, 0)
+    radiusPanel.Paint = function(self, w, h)
+        draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
+        draw.SimpleText("Rayon de sélection (RMB)", "ConstructionButton", 14, 14, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText(math.Round(ConstructionSystem.ClientRadius) .. " unités", "ConstructionBody", w - 14, 14, Colors.accent, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    end
 
     local minR = ConstructionSystem.Config.SelectionRadiusMin or 50
-    local maxR = ConstructionSystem.Config.SelectionRadiusMax or 2000
+    local maxR = ConstructionSystem.Config.SelectionRadiusMax or 1000
 
-    local radiusSlider = vgui.Create("DNumSlider", panel)
-    radiusSlider:Dock(TOP)
-    radiusSlider:DockMargin(10, 0, 10, 5)
-    radiusSlider:SetTall(30)
-    radiusSlider:SetText("")
-    radiusSlider:SetMin(minR)
-    radiusSlider:SetMax(maxR)
-    radiusSlider:SetDecimals(0)
-    radiusSlider:SetValue(ConstructionSystem.ClientRadius)
-    radiusSlider.OnValueChanged = function(self, val)
-        val = math.Round(val)
-        ConstructionSystem.ClientRadius = val
-        if IsValid(radiusLabel) then
-            radiusLabel:SetText("Rayon de selection (RMB) : " .. val .. " unites")
-        end
+    local slider = vgui.Create("DNumSlider", radiusPanel)
+    slider:SetPos(10, 40)
+    slider:SetSize(radiusPanel:GetWide() - 20, 40)
+    slider:SetText("")
+    slider:SetMin(minR)
+    slider:SetMax(maxR)
+    slider:SetDecimals(0)
+    slider:SetValue(ConstructionSystem.ClientRadius)
+    slider.OnValueChanged = function(self, val)
+        ConstructionSystem.ClientRadius = math.Round(val)
     end
 
     -- Info
-    local info = vgui.Create("DLabel", panel)
+    local info = vgui.Create("DPanel", page)
     info:Dock(TOP)
-    info:DockMargin(10, 15, 10, 5)
-    info:SetTextColor(Color(150, 150, 150))
-    info:SetWrap(true)
-    info:SetAutoStretchVertical(true)
-    info:SetText("Le rayon determine la zone de selection quand vous faites clic droit avec l'outil de construction. Le changement est immediat, pas besoin de redemarrer.")
+    info:SetTall(50)
+    info:DockMargin(0, 10, 0, 0)
+    info.Paint = function(self, w, h)
+        draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
+        draw.SimpleText("ℹ Le rayon est appliqué immédiatement au prochain clic droit.", "ConstructionSmall", 14, h/2, Colors.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+    end
 
-    return panel
+    return page
 end
 
 ---------------------------------------------------------------------------
--- ONGLET : INFOS
+-- PAGE : AIDE
 ---------------------------------------------------------------------------
 
-function ConstructionSystem.Menu.CreateInfoPanel(parent)
-    local panel = vgui.Create("DPanel", parent)
-    panel:Dock(FILL)
-    panel.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, Color(45, 45, 50, 200))
-    end
+function ConstructionSystem.Menu.CreateHelpPage(parent)
+    local page = vgui.Create("DPanel", parent)
+    page.Paint = function() end
 
-    local scroll = vgui.Create("DScrollPanel", panel)
+    local scroll = vgui.Create("DScrollPanel", page)
     scroll:Dock(FILL)
-    scroll:DockMargin(10, 10, 10, 10)
 
-    local function AddInfoLine(text, color)
-        local label = vgui.Create("DLabel", scroll)
-        label:Dock(TOP)
-        label:DockMargin(0, 2, 0, 2)
-        label:SetText(text)
-        label:SetTextColor(color or Color(200, 200, 200))
-        label:SetWrap(true)
-        label:SetAutoStretchVertical(true)
+    local function Section(title)
+        local lbl = vgui.Create("DLabel", scroll)
+        lbl:Dock(TOP)
+        lbl:DockMargin(0, 14, 0, 4)
+        lbl:SetFont("ConstructionHeader")
+        lbl:SetTextColor(Colors.accent)
+        lbl:SetText(title)
     end
 
-    AddInfoLine("=== SYSTEME DE CONSTRUCTION RP ===", Color(0, 150, 255))
-    AddInfoLine("")
-    AddInfoLine("UTILISATION :", Color(255, 200, 0))
-    AddInfoLine("1. Deviens Constructeur (F4 menu)")
-    AddInfoLine("2. Utilise l'arme 'Outil de Construction'")
-    AddInfoLine("3. Clic gauche sur des props pour les selectionner (halo bleu)")
-    AddInfoLine("4. Clic droit pour selectionner tous les props dans un rayon")
-    AddInfoLine("5. Tape 'construction_menu' en console")
-    AddInfoLine("6. Sauvegarde ton blueprint puis charge-le en fantome")
-    AddInfoLine("")
-    AddInfoLine("CONSTRUCTION :", Color(255, 200, 0))
-    AddInfoLine("1. Charge un blueprint -> des props fantomes apparaissent")
-    AddInfoLine("2. Achete une Caisse de Materiaux (F4 -> Entities -> Construction)")
-    AddInfoLine("3. Appuie E sur la caisse pour l'activer")
-    AddInfoLine("4. Appuie E sur les props fantomes pour les materialiser")
-    AddInfoLine("5. N'importe quel joueur peut aider a construire !")
-    AddInfoLine("")
-    AddInfoLine("RACCOURCIS (arme) :", Color(255, 200, 0))
-    AddInfoLine("LMB : Selectionner / Deselectionner un prop")
-    AddInfoLine("RMB : Selectionner par zone (rayon)")
-    AddInfoLine("R (Reload) : Vider la selection")
-    AddInfoLine("")
-    AddInfoLine("LIMITES :", Color(255, 200, 0))
-    local maxProps = ConstructionSystem.Config.MaxPropsPerBlueprint
-    AddInfoLine("Max props par blueprint : " .. (maxProps > 0 and maxProps or "Illimite"))
-    local maxBP = ConstructionSystem.Config.MaxBlueprintsPerPlayer
-    AddInfoLine("Max blueprints sauvegardes : " .. (maxBP > 0 and maxBP or "Illimite"))
-    AddInfoLine("Max caisses par joueur : " .. ConstructionSystem.Config.MaxCratesPerPlayer)
-    AddInfoLine("Materiaux par caisse : " .. ConstructionSystem.Config.CrateMaxMaterials)
+    local function Line(text, col)
+        local lbl = vgui.Create("DLabel", scroll)
+        lbl:Dock(TOP)
+        lbl:DockMargin(8, 1, 0, 1)
+        lbl:SetFont("ConstructionBody")
+        lbl:SetTextColor(col or Colors.textDim)
+        lbl:SetText(text)
+        lbl:SetWrap(true)
+        lbl:SetAutoStretchVertical(true)
+    end
 
-    return panel
+    Section("Sélection")
+    Line("LMB  →  Sélectionner / Désélectionner un prop")
+    Line("RMB  →  Sélectionner tous les props dans le rayon")
+    Line("R (Reload)  →  Vider la sélection")
+    Line("Shift+RMB  →  Ouvrir ce menu")
+
+    Section("Blueprints")
+    Line("1. Sélectionnez vos props avec l'outil")
+    Line("2. Ouvrez le menu → onglet Sauvegarder")
+    Line("3. Donnez un nom et sauvegardez")
+    Line("4. Pour charger : onglet Blueprints → sélectionnez → Charger")
+
+    Section("Placement")
+    Line("Après avoir chargé un blueprint :")
+    Line("Molette  →  Rotation")
+    Line("Shift+Molette  →  Ajuster la hauteur")
+    Line("LMB  →  Confirmer le placement")
+    Line("RMB / Échap  →  Annuler")
+
+    Section("Construction")
+    Line("1. Le constructeur charge un blueprint (fantômes)")
+    Line("2. Achetez une Caisse de Matériaux (F4 → Entities)")
+    Line("3. Appuyez E sur la caisse pour l'activer")
+    Line("4. Appuyez E sur les fantômes pour les matérialiser")
+    Line("5. Tout le monde peut aider à construire !")
+
+    Section("Limites")
+    local maxP = ConstructionSystem.Config.MaxPropsPerBlueprint
+    Line("Max props par blueprint : " .. (maxP > 0 and maxP or "Illimité"))
+    local maxBP = ConstructionSystem.Config.MaxBlueprintsPerPlayer
+    Line("Max blueprints : " .. (maxBP > 0 and maxBP or "Illimité"))
+    Line("Max caisses par joueur : " .. (ConstructionSystem.Config.MaxCratesPerPlayer or 2))
+    Line("Matériaux par caisse : " .. (ConstructionSystem.Config.CrateMaxMaterials or 30))
+
+    return page
 end
 
 ---------------------------------------------------------------------------
--- CONCOMMAND POUR OUVRIR LE MENU
+-- CONCOMMAND
 ---------------------------------------------------------------------------
 
 concommand.Add("construction_menu", function()
