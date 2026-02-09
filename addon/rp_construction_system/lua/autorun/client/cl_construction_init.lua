@@ -1,4 +1,9 @@
--- Initialisation client
-print("[Construction] Loading client files...")
-include("construction/shared/sh_config.lua")
-print("[Construction] Client loaded")
+--[[-----------------------------------------------------------------------
+    RP Construction System - Initialisation Client
+---------------------------------------------------------------------------]]
+
+include("rp_construction/sh_config.lua")
+include("rp_construction/cl_selection.lua")
+include("rp_construction/cl_menu.lua")
+
+print("[Construction] Client initialisé - v" .. ConstructionSystem.Config.Version)
