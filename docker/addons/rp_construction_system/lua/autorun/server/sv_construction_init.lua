@@ -59,4 +59,56 @@ timer.Simple(30, function()
     end
 end)
 
+-- 11. Configuration des jobs SWEP après chargement DarkRP
+hook.Add("loadCustomDarkRPItems", "Construction_SetupJobs", function()
+    -- Configure les jobs qui reçoivent le SWEP automatiquement
+    -- Par défaut: TEAM_BUILDER si il existe
+    if TEAM_BUILDER and not ConstructionSystem.Config.SWEPJobs then
+        ConstructionSystem.Config.SWEPJobs = {TEAM_BUILDER}
+    end
+
+    -- Configure les jobs autorisés (même liste par défaut)
+    if not ConstructionSystem.Config.AllowedJobs and ConstructionSystem.Config.SWEPJobs then
+        ConstructionSystem.Config.AllowedJobs = ConstructionSystem.Config.SWEPJobs
+    end
+
+    print("[Construction] Jobs SWEP: " .. (ConstructionSystem.Config.SWEPJobs and #ConstructionSystem.Config.SWEPJobs or 0) .. " job(s)")
+end)
+
+-- 12. Distribution SWEP au changement de job
+hook.Add("OnPlayerChangedTeam", "Construction_GiveSWEP", function(ply, oldTeam, newTeam)
+    timer.Simple(0.5, function()
+        if not IsValid(ply) then return end
+
+        -- Retirer le SWEP si l'ancien job l'avait
+        if ply:HasWeapon("weapon_construction") then
+            ply:StripWeapon("weapon_construction")
+        end
+
+        -- Donner si le nouveau job est dans la liste
+        local swepJobs = ConstructionSystem.Config.SWEPJobs
+        if swepJobs then
+            for _, team in ipairs(swepJobs) do
+                if newTeam == team then
+                    ply:Give("weapon_construction")
+                    break
+                end
+            end
+        end
+    end)
+end)
+
+-- 13. Distribution SWEP au spawn
+hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
+    local swepJobs = ConstructionSystem.Config.SWEPJobs
+    if not swepJobs then return end
+
+    for _, team in ipairs(swepJobs) do
+        if ply:Team() == team then
+            ply:Give("weapon_construction")
+            return
+        end
+    end
+end)
+
 print("[Construction] Serveur initialise !")

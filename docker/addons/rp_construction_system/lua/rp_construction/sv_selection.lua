@@ -84,9 +84,12 @@ function ConstructionSystem.Selection.Add(ply, ent)
     if ent:GetClass() ~= "prop_physics" then return false end
     if not IsOwner(ply, ent) then return false end
 
-    local count = ConstructionSystem.Selection.Count(ply)
-    if count >= ConstructionSystem.Config.MaxPropsPerBlueprint then
-        return false, "Limite de props atteinte (" .. ConstructionSystem.Config.MaxPropsPerBlueprint .. ")"
+    local maxProps = ConstructionSystem.Config.MaxPropsPerBlueprint
+    if maxProps > 0 then
+        local count = ConstructionSystem.Selection.Count(ply)
+        if count >= maxProps then
+            return false, "Limite de props atteinte (" .. maxProps .. ")"
+        end
     end
 
     local sel = ConstructionSystem.Selection.Get(ply)
@@ -118,7 +121,9 @@ end
 
 --- Sélectionner tous les props dans un rayon
 function ConstructionSystem.Selection.AddInRadius(ply, center, radius)
-    radius = math.min(radius or ConstructionSystem.Config.SelectionRadius, ConstructionSystem.Config.SelectionRadius)
+    local maxRadius = ConstructionSystem.Config.SelectionRadiusMax or 2000
+    local minRadius = ConstructionSystem.Config.SelectionRadiusMin or 50
+    radius = math.Clamp(radius or ConstructionSystem.Config.SelectionRadiusDefault, minRadius, maxRadius)
 
     local ents_found = ents.FindInSphere(center, radius)
     local added = 0
@@ -220,7 +225,9 @@ net.Receive("Construction_SelectRadius", function(len, ply)
     local radius = net.ReadUInt(10) -- max 1024
 
     -- Validation
-    radius = math.Clamp(radius, 50, ConstructionSystem.Config.SelectionRadius)
+    local maxRadius = ConstructionSystem.Config.SelectionRadiusMax or 2000
+    local minRadius = ConstructionSystem.Config.SelectionRadiusMin or 50
+    radius = math.Clamp(radius, minRadius, maxRadius)
 
     -- Vérifier que le centre est pas trop loin du joueur
     if center:Distance(ply:GetPos()) > 2000 then return end
@@ -240,6 +247,15 @@ end)
 net.Receive("Construction_RequestSync", function(len, ply)
     if not CanUseConstruction(ply) then return end
     ConstructionSystem.Selection.SyncToClient(ply)
+end)
+
+--- Changement du rayon de sélection (depuis le menu client)
+net.Receive("Construction_SetRadius", function(len, ply)
+    if not CanUseConstruction(ply) then return end
+    local radius = net.ReadUInt(12) -- max 4096
+    local maxR = ConstructionSystem.Config.SelectionRadiusMax or 2000
+    local minR = ConstructionSystem.Config.SelectionRadiusMin or 50
+    ply.ConstructionRadius = math.Clamp(radius, minR, maxR)
 end)
 
 ---------------------------------------------------------------------------

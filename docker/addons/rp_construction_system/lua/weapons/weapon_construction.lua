@@ -71,7 +71,8 @@ function SWEP:SecondaryAttack()
     local tr = ply:GetEyeTrace()
     if not tr.Hit then return end
 
-    ConstructionSystem.Selection.AddInRadius(ply, tr.HitPos, ConstructionSystem.Config.SelectionRadius)
+    local radius = ply.ConstructionRadius or ConstructionSystem.Config.SelectionRadiusDefault
+    ConstructionSystem.Selection.AddInRadius(ply, tr.HitPos, radius)
 end
 
 -- Reload: Clear sélection

@@ -81,7 +81,11 @@ function ConstructionSystem.Menu.Open()
     local savePanel = ConstructionSystem.Menu.CreateSavePanel(tabs)
     tabs:AddSheet("Sauvegarder", savePanel, "icon16/disk.png")
 
-    -- Onglet 3 : Infos
+    -- Onglet 3 : Paramètres
+    local settingsPanel = ConstructionSystem.Menu.CreateSettingsPanel(tabs)
+    tabs:AddSheet("Parametres", settingsPanel, "icon16/wrench.png")
+
+    -- Onglet 4 : Infos
     local infoPanel = ConstructionSystem.Menu.CreateInfoPanel(tabs)
     tabs:AddSheet("Infos", infoPanel, "icon16/information.png")
 end
@@ -227,7 +231,9 @@ function ConstructionSystem.Menu.CreateSavePanel(parent)
     selInfo:SetTextColor(Color(0, 150, 255))
 
     local selCount = ConstructionSystem.Selection.Count()
-    selInfo:SetText("Props selectionnes : " .. selCount .. " / " .. ConstructionSystem.Config.MaxPropsPerBlueprint)
+    local maxP = ConstructionSystem.Config.MaxPropsPerBlueprint
+    local maxText = maxP > 0 and tostring(maxP) or "∞"
+    selInfo:SetText("Props selectionnes : " .. selCount .. " / " .. maxText)
 
     -- Nom
     local nameLabel = vgui.Create("DLabel", panel)
@@ -306,9 +312,91 @@ function ConstructionSystem.Menu.CreateSavePanel(parent)
         end
         selCount = ConstructionSystem.Selection.Count()
         if IsValid(selInfo) then
-            selInfo:SetText("Props selectionnes : " .. selCount .. " / " .. ConstructionSystem.Config.MaxPropsPerBlueprint)
+            local mxP = ConstructionSystem.Config.MaxPropsPerBlueprint
+            local mxText = mxP > 0 and tostring(mxP) or "∞"
+            selInfo:SetText("Props selectionnes : " .. selCount .. " / " .. mxText)
         end
     end)
+
+    return panel
+end
+
+---------------------------------------------------------------------------
+-- ONGLET : PARAMÈTRES
+---------------------------------------------------------------------------
+
+-- Variable client pour le rayon (persiste entre ouvertures du menu)
+ConstructionSystem.ClientRadius = ConstructionSystem.ClientRadius or (ConstructionSystem.Config.SelectionRadiusDefault or 500)
+
+function ConstructionSystem.Menu.CreateSettingsPanel(parent)
+    local panel = vgui.Create("DPanel", parent)
+    panel:Dock(FILL)
+    panel.Paint = function(self, w, h)
+        draw.RoundedBox(4, 0, 0, w, h, Color(45, 45, 50, 200))
+    end
+
+    -- Titre
+    local title = vgui.Create("DLabel", panel)
+    title:Dock(TOP)
+    title:DockMargin(10, 10, 10, 5)
+    title:SetFont("DermaDefaultBold")
+    title:SetTextColor(Color(0, 150, 255))
+    title:SetText("PARAMETRES DE SELECTION")
+
+    -- Rayon de sélection
+    local radiusLabel = vgui.Create("DLabel", panel)
+    radiusLabel:Dock(TOP)
+    radiusLabel:DockMargin(10, 15, 10, 2)
+    radiusLabel:SetTextColor(Color(200, 200, 200))
+    radiusLabel:SetText("Rayon de selection (RMB) : " .. ConstructionSystem.ClientRadius .. " unites")
+
+    local minR = ConstructionSystem.Config.SelectionRadiusMin or 50
+    local maxR = ConstructionSystem.Config.SelectionRadiusMax or 2000
+
+    local radiusSlider = vgui.Create("DNumSlider", panel)
+    radiusSlider:Dock(TOP)
+    radiusSlider:DockMargin(10, 0, 10, 5)
+    radiusSlider:SetTall(30)
+    radiusSlider:SetText("")
+    radiusSlider:SetMin(minR)
+    radiusSlider:SetMax(maxR)
+    radiusSlider:SetDecimals(0)
+    radiusSlider:SetValue(ConstructionSystem.ClientRadius)
+    radiusSlider.OnValueChanged = function(self, val)
+        val = math.Round(val)
+        ConstructionSystem.ClientRadius = val
+        if IsValid(radiusLabel) then
+            radiusLabel:SetText("Rayon de selection (RMB) : " .. val .. " unites")
+        end
+    end
+
+    -- Bouton Appliquer
+    local btnApply = vgui.Create("DButton", panel)
+    btnApply:Dock(TOP)
+    btnApply:DockMargin(10, 10, 10, 5)
+    btnApply:SetTall(35)
+    btnApply:SetText("APPLIQUER LE RAYON")
+    btnApply:SetTextColor(Color(255, 255, 255))
+    btnApply:SetFont("DermaDefaultBold")
+    btnApply.Paint = function(self, w, h)
+        draw.RoundedBox(4, 0, 0, w, h, self:IsHovered() and Color(0, 130, 220) or Color(0, 100, 200))
+    end
+    btnApply.DoClick = function()
+        local val = math.Round(ConstructionSystem.ClientRadius)
+        net.Start("Construction_SetRadius")
+        net.WriteUInt(val, 12)
+        net.SendToServer()
+        LocalPlayer():ChatPrint("[Construction] Rayon de selection : " .. val .. " unites")
+    end
+
+    -- Info
+    local info = vgui.Create("DLabel", panel)
+    info:Dock(TOP)
+    info:DockMargin(10, 15, 10, 5)
+    info:SetTextColor(Color(150, 150, 150))
+    info:SetWrap(true)
+    info:SetAutoStretchVertical(true)
+    info:SetText("Le rayon determine la zone de selection quand vous faites clic droit avec l'outil de construction. Plus le rayon est grand, plus vous selectionnez de props d'un coup.")
 
     return panel
 end
@@ -361,8 +449,11 @@ function ConstructionSystem.Menu.CreateInfoPanel(parent)
     AddInfoLine("R (Reload) : Vider la selection")
     AddInfoLine("")
     AddInfoLine("LIMITES :", Color(255, 200, 0))
-    AddInfoLine("Max props par blueprint : " .. ConstructionSystem.Config.MaxPropsPerBlueprint)
-    AddInfoLine("Max blueprints sauvegardes : " .. ConstructionSystem.Config.MaxBlueprintsPerPlayer)
+    local maxProps = ConstructionSystem.Config.MaxPropsPerBlueprint
+    AddInfoLine("Max props par blueprint : " .. (maxProps > 0 and maxProps or "Illimite"))
+    local maxBP = ConstructionSystem.Config.MaxBlueprintsPerPlayer
+    AddInfoLine("Max blueprints sauvegardes : " .. (maxBP > 0 and maxBP or "Illimite"))
+    AddInfoLine("Max caisses par joueur : " .. ConstructionSystem.Config.MaxCratesPerPlayer)
     AddInfoLine("Materiaux par caisse : " .. ConstructionSystem.Config.CrateMaxMaterials)
 
     return panel

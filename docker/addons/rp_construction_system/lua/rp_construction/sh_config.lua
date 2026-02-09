@@ -12,8 +12,9 @@ ConstructionSystem.Config.Version = "2.0.0"
 ---------------------------------------------------------------------------
 -- LIMITES
 ---------------------------------------------------------------------------
-ConstructionSystem.Config.MaxPropsPerBlueprint = 150   -- Limite de props par blueprint (configurable par le serveur)
-ConstructionSystem.Config.MaxBlueprintsPerPlayer = 0    -- 0 = illimité
+ConstructionSystem.Config.MaxPropsPerBlueprint = 150   -- Max props par blueprint (0 = illimité)
+ConstructionSystem.Config.MaxBlueprintsPerPlayer = 0    -- Max blueprints par joueur (0 = illimité)
+ConstructionSystem.Config.MaxCratesPerPlayer = 2        -- Max caisses simultanées par joueur (0 = illimité)
 ConstructionSystem.Config.MaxNameLength = 50
 ConstructionSystem.Config.MaxDescLength = 200
 
@@ -22,7 +23,13 @@ ConstructionSystem.Config.MaxDescLength = 200
 ---------------------------------------------------------------------------
 ConstructionSystem.Config.SaveCooldown = 10
 ConstructionSystem.Config.LoadCooldown = 15
-ConstructionSystem.Config.SelectionRadius = 500
+
+---------------------------------------------------------------------------
+-- SÉLECTION
+---------------------------------------------------------------------------
+ConstructionSystem.Config.SelectionRadiusMin = 50       -- Rayon minimum
+ConstructionSystem.Config.SelectionRadiusMax = 2000     -- Rayon maximum
+ConstructionSystem.Config.SelectionRadiusDefault = 500  -- Rayon par défaut
 
 ---------------------------------------------------------------------------
 -- CAISSE DE MATÉRIAUX
@@ -56,10 +63,15 @@ ConstructionSystem.Config.AllowedClasses = {
 }
 
 ---------------------------------------------------------------------------
--- JOBS
+-- JOBS & SWEP
 ---------------------------------------------------------------------------
--- Mettre les TEAM_ autorisés, nil = tout le monde
-ConstructionSystem.Config.AllowedJobs = nil  -- Sera configuré quand TEAM_BUILDER existe
+-- Liste des TEAM_ autorisés à utiliser le système (nil = tout le monde)
+ConstructionSystem.Config.AllowedJobs = nil
+
+-- Jobs qui reçoivent automatiquement le SWEP weapon_construction
+-- Ajoutez vos jobs existants ici, ex: {TEAM_BUILDER, TEAM_ARCHITECT}
+-- nil = personne ne reçoit le SWEP auto (les joueurs doivent le recevoir autrement)
+ConstructionSystem.Config.SWEPJobs = nil  -- Configuré après le chargement des jobs (voir sv_construction_init.lua)
 
 ---------------------------------------------------------------------------
 -- DATABASE
@@ -95,4 +107,5 @@ ConstructionSystem.NetMessages = {
     "Construction_SpawnGhosts",
     "Construction_RemoveGhosts",
     "Construction_MaterializeGhost",
+    "Construction_SetRadius",
 }
