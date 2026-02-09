@@ -50,6 +50,43 @@ function ENT:Draw()
     self:DrawModel()
 end
 
+---------------------------------------------------------------------------
+-- CLIENT : Détecter E en regardant un ghost → envoyer au serveur
+---------------------------------------------------------------------------
+
+local lastUseSent = 0
+
+hook.Add("PlayerBindPress", "Construction_GhostUse", function(ply, bind, pressed)
+    if not pressed then return end
+    if not string.find(bind, "+use") then return end
+
+    if lastUseSent > CurTime() then return end
+
+    -- Vérifier si on regarde un ghost
+    local eyePos = ply:EyePos()
+    local aimVec = ply:GetAimVector()
+
+    for _, ent in ipairs(ents.FindByClass("construction_ghost")) do
+        if IsValid(ent) then
+            local toEnt = (ent:GetPos() - eyePos)
+            local dist = toEnt:Length()
+
+            if dist < 300 then
+                local dir = toEnt:GetNormalized()
+                local dot = aimVec:Dot(dir)
+
+                -- dot > 0.9 = ~25 degrés de tolérance (plus permissif côté client)
+                if dot > 0.9 then
+                    lastUseSent = CurTime() + 0.3
+                    net.Start("Construction_MaterializeGhost")
+                    net.SendToServer()
+                    return
+                end
+            end
+        end
+    end
+end)
+
 --- HUD info quand le joueur regarde un ghost
 hook.Add("HUDPaint", "Construction_GhostInfo", function()
     local ply = LocalPlayer()
