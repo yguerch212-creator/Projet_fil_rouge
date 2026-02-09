@@ -27,7 +27,13 @@ include("rp_construction/sv_selection.lua")
 -- 5. Module blueprints (server)
 include("rp_construction/sv_blueprints.lua")
 
--- 6. Fichiers client à envoyer
+-- 6. Module permissions & partage
+include("rp_construction/sv_permissions.lua")
+
+-- 7. Module sécurité & logging
+include("rp_construction/sv_security.lua")
+
+-- 8. Fichiers client à envoyer
 AddCSLuaFile("rp_construction/cl_selection.lua")
 AddCSLuaFile("rp_construction/cl_menu.lua")
 
