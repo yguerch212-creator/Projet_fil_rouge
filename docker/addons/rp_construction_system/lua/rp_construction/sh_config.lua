@@ -28,7 +28,7 @@ ConstructionSystem.Config.LoadCooldown = 15
 -- SÉLECTION
 ---------------------------------------------------------------------------
 ConstructionSystem.Config.SelectionRadiusMin = 50       -- Rayon minimum
-ConstructionSystem.Config.SelectionRadiusMax = 2000     -- Rayon maximum
+ConstructionSystem.Config.SelectionRadiusMax = 1000     -- Rayon maximum (max 1023 pour net)
 ConstructionSystem.Config.SelectionRadiusDefault = 500  -- Rayon par défaut
 
 ---------------------------------------------------------------------------
@@ -107,5 +107,4 @@ ConstructionSystem.NetMessages = {
     "Construction_SpawnGhosts",
     "Construction_RemoveGhosts",
     "Construction_MaterializeGhost",
-    "Construction_SetRadius",
 }

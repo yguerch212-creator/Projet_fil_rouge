@@ -66,13 +66,18 @@ function SWEP:SecondaryAttack()
         return
     end
 
-    if CLIENT then return end
+    if SERVER then return end  -- Sélection par zone gérée côté client → net message
 
     local tr = ply:GetEyeTrace()
     if not tr.Hit then return end
 
-    local radius = ply.ConstructionRadius or ConstructionSystem.Config.SelectionRadiusDefault
-    ConstructionSystem.Selection.AddInRadius(ply, tr.HitPos, radius)
+    -- Rayon stocké côté client (modifiable dans le menu Paramètres)
+    local radius = ConstructionSystem.ClientRadius or ConstructionSystem.Config.SelectionRadiusDefault or 500
+
+    net.Start("Construction_SelectRadius")
+    net.WriteVector(tr.HitPos)
+    net.WriteUInt(math.Round(radius), 10)
+    net.SendToServer()
 end
 
 -- Reload: Clear sélection

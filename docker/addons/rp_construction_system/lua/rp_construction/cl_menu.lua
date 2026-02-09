@@ -370,25 +370,6 @@ function ConstructionSystem.Menu.CreateSettingsPanel(parent)
         end
     end
 
-    -- Bouton Appliquer
-    local btnApply = vgui.Create("DButton", panel)
-    btnApply:Dock(TOP)
-    btnApply:DockMargin(10, 10, 10, 5)
-    btnApply:SetTall(35)
-    btnApply:SetText("APPLIQUER LE RAYON")
-    btnApply:SetTextColor(Color(255, 255, 255))
-    btnApply:SetFont("DermaDefaultBold")
-    btnApply.Paint = function(self, w, h)
-        draw.RoundedBox(4, 0, 0, w, h, self:IsHovered() and Color(0, 130, 220) or Color(0, 100, 200))
-    end
-    btnApply.DoClick = function()
-        local val = math.Round(ConstructionSystem.ClientRadius)
-        net.Start("Construction_SetRadius")
-        net.WriteUInt(val, 12)
-        net.SendToServer()
-        LocalPlayer():ChatPrint("[Construction] Rayon de selection : " .. val .. " unites")
-    end
-
     -- Info
     local info = vgui.Create("DLabel", panel)
     info:Dock(TOP)
@@ -396,7 +377,7 @@ function ConstructionSystem.Menu.CreateSettingsPanel(parent)
     info:SetTextColor(Color(150, 150, 150))
     info:SetWrap(true)
     info:SetAutoStretchVertical(true)
-    info:SetText("Le rayon determine la zone de selection quand vous faites clic droit avec l'outil de construction. Plus le rayon est grand, plus vous selectionnez de props d'un coup.")
+    info:SetText("Le rayon determine la zone de selection quand vous faites clic droit avec l'outil de construction. Le changement est immediat, pas besoin de redemarrer.")
 
     return panel
 end

@@ -249,15 +249,6 @@ net.Receive("Construction_RequestSync", function(len, ply)
     ConstructionSystem.Selection.SyncToClient(ply)
 end)
 
---- Changement du rayon de sélection (depuis le menu client)
-net.Receive("Construction_SetRadius", function(len, ply)
-    if not CanUseConstruction(ply) then return end
-    local radius = net.ReadUInt(12) -- max 4096
-    local maxR = ConstructionSystem.Config.SelectionRadiusMax or 2000
-    local minR = ConstructionSystem.Config.SelectionRadiusMin or 50
-    ply.ConstructionRadius = math.Clamp(radius, minR, maxR)
-end)
-
 ---------------------------------------------------------------------------
 -- CLEANUP
 ---------------------------------------------------------------------------
