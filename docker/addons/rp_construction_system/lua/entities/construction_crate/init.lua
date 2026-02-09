@@ -23,40 +23,36 @@ function ENT:Initialize()
     self.Materials = ConstructionSystem.Config.CrateMaxMaterials
     self:SetNWInt("materials", self.Materials)
     self:SetNWInt("max_materials", ConstructionSystem.Config.CrateMaxMaterials)
-
-    -- Track ownership (DarkRP sets CPPIGetOwner after spawn)
-    timer.Simple(0.1, function()
-        if not IsValid(self) then return end
-        local owner = self:CPPIGetOwner and self:CPPIGetOwner()
-        if IsValid(owner) then
-            self.SID = owner:SteamID64()
-        end
-    end)
 end
 
 ---------------------------------------------------------------------------
--- PERMISSIONS : Physgun / Toolgun / Gravgun (via hooks)
+-- PERMISSIONS : FPP gère via CPPIGetOwner (DarkRP set automatiquement)
+-- On ajoute juste PhysgunPickup sur l'entité pour que FPP autorise le proprio
 ---------------------------------------------------------------------------
 
 hook.Add("PhysgunPickup", "Construction_CratePhysgun", function(ply, ent)
     if ent:GetClass() ~= "construction_crate" then return end
-    if ent.SID == ply:SteamID64() or ply:IsAdmin() then return true end
-    return false
+    local owner = ent:CPPIGetOwner()
+    if IsValid(owner) and owner == ply then return true end
+    if ply:IsAdmin() then return true end
 end)
 
 hook.Add("CanTool", "Construction_CrateTool", function(ply, tr, tool)
     if not IsValid(tr.Entity) or tr.Entity:GetClass() ~= "construction_crate" then return end
     local ent = tr.Entity
-    if tool == "remover" then
-        if ent.SID == ply:SteamID64() or ply:IsAdmin() then return true end
-        return false
-    end
-    return false  -- Pas d'autres tools sur les caisses
+    local owner = ent:CPPIGetOwner()
+    local isOwner = (IsValid(owner) and owner == ply) or ply:IsAdmin()
+    if tool == "remover" and isOwner then return true end
+    if not isOwner then return false end
 end)
 
 hook.Add("GravGunPickupAllowed", "Construction_CrateGravgun", function(ply, ent)
     if ent:GetClass() == "construction_crate" then return true end
 end)
+
+---------------------------------------------------------------------------
+-- FONCTIONS
+---------------------------------------------------------------------------
 
 function ENT:GetRemainingMats()
     return self.Materials or 0
@@ -74,16 +70,6 @@ function ENT:UseMaterial()
     end
 
     return true
-end
-
-function ENT:SpawnFunction(ply, tr, ClassName)
-    if not tr.Hit then return end
-    local ent = ents.Create(ClassName)
-    ent:SetPos(tr.HitPos + tr.HitNormal * 20)
-    ent.SID = ply:SteamID64()
-    ent:Spawn()
-    ent:Activate()
-    return ent
 end
 
 function ENT:Use(activator, caller)
