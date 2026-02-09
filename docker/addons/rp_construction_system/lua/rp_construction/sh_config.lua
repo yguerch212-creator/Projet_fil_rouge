@@ -47,4 +47,10 @@ ConstructionSystem.NetMessages = {
     "Construction_DeleteBlueprint",
     "Construction_ShareBlueprint",
     "Construction_Notification",
+    -- Sélection
+    "Construction_SelectToggle",
+    "Construction_SelectRadius",
+    "Construction_SelectClear",
+    "Construction_RequestSync",
+    "Construction_SyncSelection",
 }

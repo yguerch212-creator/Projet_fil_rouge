@@ -21,7 +21,13 @@ print("[Construction] " .. #ConstructionSystem.NetMessages .. " net messages enr
 -- 3. Module base de données (server only)
 include("rp_construction/sv_database.lua")
 
--- 4. Connexion à MySQL une fois le serveur prêt
+-- 4. Module sélection (server)
+include("rp_construction/sv_selection.lua")
+
+-- 5. Fichiers client à envoyer
+AddCSLuaFile("rp_construction/cl_selection.lua")
+
+-- 6. Connexion à MySQL une fois le serveur prêt
 hook.Add("InitPostEntity", "Construction_DBConnect", function()
     timer.Simple(5, function()
         print("[Construction] Connexion à MySQL...")
