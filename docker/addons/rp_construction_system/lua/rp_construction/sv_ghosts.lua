@@ -140,82 +140,64 @@ end
 -- MATÉRIALISATION : KeyPress + FindGhostInSight
 ---------------------------------------------------------------------------
 
-hook.Add("KeyPress", "Construction_GhostMaterialize", function(ply, key)
-    if key ~= IN_USE then return end
+-- Think hook : vérifie chaque tick si un joueur maintient E en regardant un ghost
+hook.Add("Think", "Construction_GhostMaterialize", function()
+    for _, ply in ipairs(player.GetAll()) do
+        if IsValid(ply) and ply:Alive() and ply:KeyDown(IN_USE) then
+            -- Cooldown
+            if ply.LastGhostUse and ply.LastGhostUse > CurTime() then continue end
 
-    -- Cooldown
-    if ply.LastGhostUse and ply.LastGhostUse > CurTime() then return end
+            -- Vérifier si le joueur a une caisse active
+            if not IsValid(ply.ActiveCrate) then continue end
 
-    -- D'abord, vérifier si le joueur regarde un ghost
-    local ghost = FindGhostInSight(ply, 500)
+            -- Chercher un ghost en vue
+            local ghost = FindGhostInSight(ply, 300)
+            if not IsValid(ghost) then continue end
 
-    if not IsValid(ghost) then
-        -- Pas de ghost en vue, laisser le Use normal se produire (caisse, etc.)
-        return
-    end
+            -- Cooldown
+            ply.LastGhostUse = CurTime() + 0.5
 
-    -- Ghost trouvé ! Appliquer le cooldown
-    ply.LastGhostUse = CurTime() + 0.5
-
-    ConstructionSystem.Log.Debug("Ghost vise par " .. ply:Nick() .. ": " .. tostring(ghost) .. " a " .. tostring(ghost:GetPos()))
-
-    -- Le joueur doit avoir une caisse active
-    local crate = ply.ActiveCrate
-    if not IsValid(crate) or crate:GetClass() ~= "construction_crate" then
-        DarkRP.notify(ply, 1, 3, "Activez d'abord une caisse (E sur la caisse)")
-        ply.ActiveCrate = nil
-        ConstructionSystem.Log.Debug("Pas de caisse active pour " .. ply:Nick())
-        return
-    end
-
-    if crate:GetMaterials() <= 0 then
-        DarkRP.notify(ply, 1, 3, "Caisse vide !")
-        ply.ActiveCrate = nil
-        return
-    end
-
-    -- Consommer un matériau
-    if not crate:UseMaterial() then
-        ConstructionSystem.Log.Error("Echec UseMaterial pour " .. ply:Nick())
-        return
-    end
-
-    ConstructionSystem.Log.Info("Materialise: " .. ply:Nick() .. " materialise " .. ghost:GetModel() .. " (caisse: " .. crate:GetMaterials() .. " restants)")
-
-    -- Matérialiser
-    local prop = ghost:Materialize(ply)
-
-    if IsValid(prop) then
-        undo.Create("Prop Materialise")
-        undo.AddEntity(prop)
-        undo.SetPlayer(ply)
-        undo.Finish()
-
-        ply:AddCleanup("props", prop)
-
-        local remaining = crate:GetMaterials()
-        ply:ChatPrint("[Construction] Prop materialise ! (" .. remaining .. " materiaux restants)")
-
-        -- Groupe
-        local groupID = ghost:GetNWString("ghost_group_id", "")
-        if ActiveGroups[groupID] then
-            ActiveGroups[groupID].materialized = (ActiveGroups[groupID].materialized or 0) + 1
-
-            local remaining_ghosts = 0
-            for _, g in ipairs(ActiveGroups[groupID].ghosts) do
-                if IsValid(g) then remaining_ghosts = remaining_ghosts + 1 end
+            local crate = ply.ActiveCrate
+            if crate:GetMaterials() <= 0 then
+                DarkRP.notify(ply, 1, 3, "Caisse vide !")
+                ply.ActiveCrate = nil
+                continue
             end
 
-            if remaining_ghosts == 0 then
-                for _, p in ipairs(player.GetAll()) do
-                    DarkRP.notify(p, 0, 5, "Construction terminee !")
+            if not crate:UseMaterial() then continue end
+
+            -- Matérialiser
+            local prop = ghost:Materialize(ply)
+
+            if IsValid(prop) then
+                undo.Create("Prop Materialise")
+                undo.AddEntity(prop)
+                undo.SetPlayer(ply)
+                undo.Finish()
+
+                ply:AddCleanup("props", prop)
+
+                local remaining = crate:GetMaterials()
+                ply:ChatPrint("[Construction] Prop materialise ! (" .. remaining .. " materiaux restants)")
+
+                local groupID = ghost:GetNWString("ghost_group_id", "")
+                if ActiveGroups[groupID] then
+                    ActiveGroups[groupID].materialized = (ActiveGroups[groupID].materialized or 0) + 1
+
+                    local remaining_ghosts = 0
+                    for _, g in ipairs(ActiveGroups[groupID].ghosts) do
+                        if IsValid(g) then remaining_ghosts = remaining_ghosts + 1 end
+                    end
+
+                    if remaining_ghosts == 0 then
+                        for _, p in ipairs(player.GetAll()) do
+                            DarkRP.notify(p, 0, 5, "Construction terminee !")
+                        end
+                        ActiveGroups[groupID] = nil
+                    end
                 end
-                ConstructionSystem.Log.Info("Groupe " .. groupID .. " entierement materialise !")
-                ActiveGroups[groupID] = nil
             end
         end
-    else
-        ConstructionSystem.Log.Error("Echec Materialize pour ghost " .. tostring(ghost))
     end
 end)
 
