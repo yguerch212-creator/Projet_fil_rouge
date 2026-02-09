@@ -247,9 +247,9 @@ function ConstructionSystem.Blueprints.Deserialize(ply, encodedData, spawnPos)
                     local phys = ent:GetPhysicsObject()
                     if IsValid(phys) then
                         if entData.Mass then phys:SetMass(entData.Mass) end
-                        if entData.Frozen then
-                            phys:EnableMotion(false)
-                        end
+                        -- Freeze tous les props par défaut pour éviter qu'ils tombent
+                        phys:EnableMotion(false)
+                        phys:Sleep()
                     end
 
                     -- Ownership
@@ -395,7 +395,7 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
             endpos = ply:EyePos() + ply:GetAimVector() * 300,
             filter = ply
         })
-        local spawnPos = tr.HitPos + Vector(0, 0, 10)
+        local spawnPos = tr.HitPos + Vector(0, 0, 50) -- 50 units au-dessus du sol pour éviter les props ghostés
 
         -- Retirer l'argent
         ply:addMoney(-ConstructionSystem.Config.LoadCost)
@@ -458,6 +458,13 @@ end
 hook.Add("PlayerDisconnected", "Construction_ClearBPCooldowns", function(ply)
     saveCooldowns[ply] = nil
     loadCooldowns[ply] = nil
+end)
+
+--- Net: ouvrir le menu (relayed du serveur au client)
+net.Receive("Construction_OpenMenu", function(len, ply)
+    if not IsValid(ply) then return end
+    net.Start("Construction_OpenMenu")
+    net.Send(ply)
 end)
 
 print("[Construction] Module sv_blueprints chargé")

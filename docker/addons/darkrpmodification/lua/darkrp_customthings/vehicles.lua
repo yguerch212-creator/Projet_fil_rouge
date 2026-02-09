@@ -1,12 +1,7 @@
 --[[-----------------------------------------------------------------------
     DarkRP Vehicles - Projet Fil Rouge
-    Véhicules disponibles à l'achat dans le F4 menu
-    
-    Note : Les véhicules simfphys ne sont PAS compatibles avec
-    DarkRP.createVehicle() car ce ne sont pas des véhicules Valve.
-    Ils nécessitent un système d'achat custom (voir sv_simfphys_shop.lua).
-    
-    Ici on ne met que les véhicules Valve (HL2) classiques.
+    Le champ 'name' doit correspondre EXACTEMENT à la clé dans
+    list.Get("Vehicles") de Source Engine.
 ---------------------------------------------------------------------------]]
 
 DarkRP.createVehicle({
