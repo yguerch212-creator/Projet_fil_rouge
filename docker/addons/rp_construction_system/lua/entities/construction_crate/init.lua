@@ -65,6 +65,7 @@ function ENT:Use(activator, caller)
     end
 
     activator.ActiveCrate = self
+    activator:SetNWEntity("ActiveCrate", self)  -- Sync au client
     DarkRP.notify(activator, 0, 4, "Caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
 end
 
@@ -72,6 +73,7 @@ function ENT:OnRemove()
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) and ply.ActiveCrate == self then
             ply.ActiveCrate = nil
+            ply:SetNWEntity("ActiveCrate", NULL)
         end
     end
 end
