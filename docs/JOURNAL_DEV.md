@@ -1,99 +1,65 @@
 # Journal de Développement
 
-## 7 Février 2026 - Jour 1 : Setup Infrastructure Docker
+## Jour 1 - Infrastructure Docker + DarkRP
+- Mise en place Docker Compose (ceifa/garrysmod + MySQL 8.0)
+- Installation DarkRP, configuration serveur
+- Workshop collection (101 addons)
+- Addon `darkrpmodification` : jobs, catégories, settings
+- Image Docker sauvegardée : `jour1-stable`, `jour1-final`
 
-### Objectif
-Mettre en place l'infrastructure de base : serveur GMod via Docker + base de données MySQL.
+## Jour 2 - Base de données MySQL
+- Installation MySQLOO 9.7.6 (module binaire Linux 64-bit)
+- Configuration partagée `sh_config.lua`
+- Module `sv_database.lua` : connexion auto-reconnect, CRUD blueprints, permissions, logging
+- Schéma BDD : 3 tables (blueprints, blueprint_permissions, blueprint_logs)
+- Prepared statements pour la sécurité SQL
+- Image Docker : `jour2-stable`
 
-### Actions réalisées
+## Jour 3-5 - Système de sélection + Blueprints + Interface
+- SWEP `weapon_construction` : arme dédiée au job Constructeur
+  * LMB: sélectionner/désélectionner un prop
+  * RMB: sélection par zone (rayon configurable)
+  * Shift+RMB: ouvrir le menu blueprints
+  * Reload: vider la sélection
+- Sérialisation custom : Vectors/Angles → JSON → compression → base64
+- Menu Derma : 3 onglets (Mes Blueprints, Sauvegarder, Infos)
+- Vérification ownership CPPI (prop protection compatible)
 
-#### Phase 1.1 - Préparation Environnement
-- Création de la structure de dossiers du projet
-- Initialisation du repository Git
-- Configuration du .gitignore
-- Premier push sur GitHub
+## Jour 6-7 - Permissions, sécurité, partage
+- Partage de blueprints entre joueurs (view/use/edit)
+- Rate limiting global (60 req/min)
+- Restriction par job (CanTool hook)
+- Commandes admin : `construction_logs`, `construction_stats`
 
-#### Phase 1.2 - Configuration Docker Compose
-- Création du `docker-compose.yml` avec deux services :
-  - **gmod-server** : Image `ceifa/garrysmod` (serveur GMod dédié)
-  - **gmod-mysql** : MySQL 8.0 pour la persistance des données
-- Limites de ressources configurées (3GB RAM max pour GMod, 512MB pour MySQL)
-- Création du schéma SQL initial avec 3 tables :
-  - `blueprints` : Stockage des constructions sauvegardées
-  - `permissions` : Gestion des droits utilisateurs
-  - `blueprint_logs` : Historique des actions
+## Jour 8-10 - Système de construction RP (v2.0)
+### Refactoring majeur : système de ghosts + caisses de matériaux
 
-#### Phase 1.3 - Installation DarkRP
-- Installation de DarkRP (gamemode roleplay)
-- Configuration basique du serveur
-- Téléchargement d'Advanced Duplicator 2 comme référence technique
+**Nouveau flow de jeu :**
+1. Le Constructeur sélectionne des props et sauvegarde un blueprint
+2. Il charge le blueprint → des **props fantômes** (transparents, bleutés) apparaissent
+3. Il achète une **Caisse de Matériaux** (F4 → Entities → Construction, $1)
+4. N'importe quel joueur active la caisse (E) puis vise un fantôme (E) → le prop se matérialise
+5. Le prop matérialisé appartient au joueur qui l'a posé
 
-### Ressources utilisées
-- Image Docker : https://github.com/ceifa/garrysmod-docker
-- Collection Workshop : ID 2270926906
-- Advanced Duplicator 2 : https://steamcommunity.com/sharedfiles/filedetails/?id=773402917
+**Entités créées :**
+- `construction_ghost` : prop fantôme (RENDERMODE_TRANSALPHA, non-solide)
+- `construction_crate` : caisse de matériaux (30 uses, compteur 3D2D)
 
-### Environnement
-- VPS Hostinger 16GB RAM
-- Ubuntu Linux
-- Docker Compose
+**Sécurité :**
+- Seuls les `prop_physics` autorisés (blacklist money printers, shipments, etc.)
+- Ownership CPPI : impossible de sélectionner les props des autres
+- Rate limiting sur toutes les actions
+- Validation serveur de chaque matérialisation
 
-### Prochaines étapes
-- Vérifier que le serveur GMod démarre correctement
-- Tester la connexion MySQL
-- Installer DarkRP et les addons de base
+**Optimisations :**
+- Pas de halo (trop lourd) → simple changement de couleur
+- HUD ghost : cache 200ms
+- Batch spawning des ghosts (5/tick)
+- Undo support pour fantômes et props matérialisés
 
----
-
-## 9 Février 2026 - Jour 2 : MySQLOO + Module Base de Données
-
-### Objectif
-Installer MySQLOO et développer le module de base de données pour l'addon de construction.
-
-### Actions réalisées
-
-#### Phase 2.1 - Installation MySQLOO
-- Téléchargement de MySQLOO 9.7.6 depuis GitHub (module binaire Linux 64-bit)
-- Installation dans `garrysmod/lua/bin/` via volume Docker
-- Vérification du chargement via RCON : `require("mysqloo")` OK
-- Configuration du volume `lua-bin` dans docker-compose pour la persistance
-
-#### Phase 2.2 - Configuration centralisée
-- Création de `sh_config.lua` (shared config) :
-  - Paramètres de limites (max props, max blueprints)
-  - Coûts DarkRP (sauvegarde, chargement, partage)
-  - Cooldowns anti-spam
-  - Configuration base de données
-  - Liste des net messages
-
-#### Phase 2.3 - Module Database (sv_database.lua)
-- Architecture complète du module database avec MySQLOO :
-  - **Connexion** : auto-reconnect toutes les 30s en cas d'échec
-  - **Init Tables** : création automatique des 3 tables au démarrage
-  - **CRUD Blueprints** : Save, Load, Update, Delete avec prepared statements
-  - **Permissions** : Share, Unshare avec niveaux (view/use/edit)
-  - **Requêtes** : GetPlayerBlueprints, GetSharedBlueprints, GetPublicBlueprints
-  - **Logging** : toutes les actions sont loguées dans blueprint_logs
-  - **Sécurité** : prepared statements pour prévenir les injections SQL
-
-#### Phase 2.4 - Tests et validation
-- Connexion MySQLOO -> MySQL testée via RCON
-- Insertion test réussie (prepared statement)
-- Vérification des 3 tables créées avec le bon schéma
-- Nettoyage des données de test
-
-### Schéma de base de données
-
-```
-blueprints (id, owner_steamid, owner_name, name, description, data, prop_count, constraint_count, is_public, created_at, updated_at)
-blueprint_permissions (id, blueprint_id, target_steamid, permission_level, granted_by, granted_at)
-blueprint_logs (id, steamid, player_name, action, blueprint_id, blueprint_name, details, created_at)
-```
-
-### Environnement
-- MySQLOO 9.7.6
-- MySQL 8.0 (Docker)
-- Prepared statements pour toutes les requêtes
-
-### Prochaines étapes
-- Jour 3 : Système de sélection de props (traces, sélection zone, copie duplicator)
+**Bugs corrigés :**
+- `GetMaterials()` conflit avec méthode native Entity → renommé
+- `base_gltransfer` n'existe pas → `base_anim`
+- KeyPress/Think ne détectent pas IN_USE → client Think + input.IsKeyDown(KEY_E) + net message
+- NWEntity sync pour ActiveCrate (client ne connaissait pas l'état serveur)
+- Props ghostés au chargement → frozen par défaut
