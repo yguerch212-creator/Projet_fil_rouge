@@ -102,12 +102,20 @@ end
 ---------------------------------------------------------------------------
 
 function SWEP:SecondaryAttack()
-    self:SetNextSecondaryFire(CurTime() + 1)
-
-    if CLIENT then return end
+    self:SetNextSecondaryFire(CurTime() + 0.5)
 
     local ply = self:GetOwner()
     if not IsValid(ply) then return end
+
+    -- Shift + Clic Droit = ouvrir le menu
+    if ply:KeyDown(IN_SPEED) then
+        if CLIENT then
+            ConstructionSystem.Menu.Open()
+        end
+        return
+    end
+
+    if CLIENT then return end
 
     local tr = ply:GetEyeTrace()
     if not tr.Hit then return end
@@ -164,7 +172,7 @@ if CLIENT then
         draw.SimpleText("Props: " .. count .. " / " .. maxProps, "DermaDefault", boxX + boxW / 2, boxY + 38, countColor, TEXT_ALIGN_CENTER)
 
         draw.SimpleText("LMB: Select | RMB: Zone | R: Clear", "DermaDefault", boxX + boxW / 2, boxY + 55, Color(150, 150, 150), TEXT_ALIGN_CENTER)
-        draw.SimpleText("Tapez  construction_menu  pour le menu", "DermaDefault", boxX + boxW / 2, boxY + 72, Color(100, 180, 255), TEXT_ALIGN_CENTER)
+        draw.SimpleText("Shift + RMB: Menu Blueprints", "DermaDefault", boxX + boxW / 2, boxY + 72, Color(100, 180, 255), TEXT_ALIGN_CENTER)
 
         -- Crosshair info
         local tr = ply:GetEyeTrace()
