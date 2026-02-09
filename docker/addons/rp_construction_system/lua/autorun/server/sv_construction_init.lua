@@ -18,7 +18,10 @@ for _, msg in ipairs(ConstructionSystem.NetMessages) do
 end
 print("[Construction] " .. #ConstructionSystem.NetMessages .. " net messages enregistres")
 
--- 3. Module base de données
+-- 3. Module logging (en premier pour que les autres modules l'utilisent)
+include("rp_construction/sv_logging.lua")
+
+-- 4. Module base de données
 include("rp_construction/sv_database.lua")
 
 -- 4. Module sélection
