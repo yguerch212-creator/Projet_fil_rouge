@@ -67,23 +67,36 @@ end
 ---------------------------------------------------------------------------
 
 local lastUseSent = 0
+local wasUseDown = false
 
-hook.Add("PlayerBindPress", "Construction_GhostUse", function(ply, bind, pressed)
-    if not pressed then return end
-    if not string.find(bind, "+use") then return end
-    if lastUseSent > CurTime() then return end
+-- Client Think : vérifie chaque frame si E est pressé en regardant un ghost
+hook.Add("Think", "Construction_GhostUseClient", function()
+    local ply = LocalPlayer()
+    if not IsValid(ply) or not ply:Alive() then return end
 
-    local ghost = FindBestGhost(ply)
-    if not IsValid(ghost) then return end -- pas de ghost en vue, laisser Use normal
+    local useDown = input.IsKeyDown(KEY_E)
 
-    -- Vérifier si on a une caisse active
-    local crate = ply:GetNWEntity("ActiveCrate")
-    if not IsValid(crate) then return end -- pas de caisse, laisser Use normal
+    -- Détecter le moment où E est PRESSÉ (pas maintenu)
+    if useDown and not wasUseDown then
+        wasUseDown = true
 
-    -- On a un ghost en vue + une caisse → envoyer au serveur
-    lastUseSent = CurTime() + 0.3
-    net.Start("Construction_MaterializeGhost")
-    net.SendToServer()
+        if lastUseSent > CurTime() then return end
+
+        -- Vérifier caisse active
+        local crate = ply:GetNWEntity("ActiveCrate")
+        if not IsValid(crate) then return end
+
+        -- Vérifier ghost en vue
+        local ghost = FindBestGhost(ply)
+        if not IsValid(ghost) then return end
+
+        -- Envoyer au serveur
+        lastUseSent = CurTime() + 0.3
+        net.Start("Construction_MaterializeGhost")
+        net.SendToServer()
+    elseif not useDown then
+        wasUseDown = false
+    end
 end)
 
 ---------------------------------------------------------------------------
