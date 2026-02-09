@@ -7,28 +7,60 @@ ConstructionSystem = ConstructionSystem or {}
 ConstructionSystem.Config = ConstructionSystem.Config or {}
 
 -- Version
-ConstructionSystem.Config.Version = "1.0.0"
+ConstructionSystem.Config.Version = "2.0.0"
 
--- Limites
-ConstructionSystem.Config.MaxPropsPerBlueprint = 50      -- Nombre max de props par blueprint
-ConstructionSystem.Config.MaxBlueprintsPerPlayer = 20    -- Nombre max de blueprints sauvegardés
-ConstructionSystem.Config.MaxNameLength = 50             -- Longueur max du nom d'un blueprint
-ConstructionSystem.Config.MaxDescLength = 200            -- Longueur max de la description
+---------------------------------------------------------------------------
+-- LIMITES
+---------------------------------------------------------------------------
+ConstructionSystem.Config.MaxPropsPerBlueprint = 50
+ConstructionSystem.Config.MaxBlueprintsPerPlayer = 20
+ConstructionSystem.Config.MaxNameLength = 50
+ConstructionSystem.Config.MaxDescLength = 200
 
--- Coûts (DarkRP money)
-ConstructionSystem.Config.SaveCost = 100                 -- Coût pour sauvegarder un blueprint
-ConstructionSystem.Config.LoadCost = 50                  -- Coût pour charger un blueprint
-ConstructionSystem.Config.ShareCost = 25                 -- Coût pour partager un blueprint
+---------------------------------------------------------------------------
+-- COOLDOWNS (secondes)
+---------------------------------------------------------------------------
+ConstructionSystem.Config.SaveCooldown = 10
+ConstructionSystem.Config.LoadCooldown = 15
+ConstructionSystem.Config.SelectionRadius = 500
 
--- Cooldowns (en secondes)
-ConstructionSystem.Config.SaveCooldown = 10              -- Cooldown entre deux sauvegardes
-ConstructionSystem.Config.LoadCooldown = 15              -- Cooldown entre deux chargements
-ConstructionSystem.Config.SelectionRadius = 500          -- Rayon max de sélection de props
+---------------------------------------------------------------------------
+-- CAISSE DE MATÉRIAUX
+---------------------------------------------------------------------------
+ConstructionSystem.Config.CrateModel = "models/hts/ww2ns/props/dun/dun_wood_crate_003.mdl"
+ConstructionSystem.Config.CrateMaxMaterials = 30   -- Nombre de props matérialisables par caisse
+ConstructionSystem.Config.CratePrice = 1            -- Prix F4
 
--- Jobs autorisés (nil = tous les jobs peuvent utiliser)
-ConstructionSystem.Config.AllowedJobs = nil              -- Mettre {TEAM_BUILDER} pour restreindre
+---------------------------------------------------------------------------
+-- SÉCURITÉ : entités interdites dans les blueprints
+---------------------------------------------------------------------------
+ConstructionSystem.Config.BlacklistedEntities = {
+    "prop_physics_multiplayer",
+    "money_printer",
+    "darkrp_money",
+    "spawned_money",
+    "spawned_shipment",
+    "spawned_weapon",
+    "drug_lab",
+    "gun_lab",
+    "microwave",
+    "bitminers_",  -- pattern
+}
 
--- Database
+-- Seuls les prop_physics sont autorisés
+ConstructionSystem.Config.AllowedClasses = {
+    ["prop_physics"] = true,
+}
+
+---------------------------------------------------------------------------
+-- JOBS
+---------------------------------------------------------------------------
+-- Mettre les TEAM_ autorisés, nil = tout le monde
+ConstructionSystem.Config.AllowedJobs = nil  -- Sera configuré quand TEAM_BUILDER existe
+
+---------------------------------------------------------------------------
+-- DATABASE
+---------------------------------------------------------------------------
 ConstructionSystem.Config.DB = {
     Host = "gmod-mysql",
     Port = 3306,
@@ -37,8 +69,11 @@ ConstructionSystem.Config.DB = {
     Database = "gmod_construction",
 }
 
--- Net messages
+---------------------------------------------------------------------------
+-- NET MESSAGES
+---------------------------------------------------------------------------
 ConstructionSystem.NetMessages = {
+    -- Menu / Blueprints
     "Construction_OpenMenu",
     "Construction_RequestBlueprints",
     "Construction_SendBlueprints",
@@ -53,4 +88,8 @@ ConstructionSystem.NetMessages = {
     "Construction_SelectClear",
     "Construction_RequestSync",
     "Construction_SyncSelection",
+    -- Ghosts
+    "Construction_SpawnGhosts",
+    "Construction_RemoveGhosts",
+    "Construction_MaterializeGhost",
 }
