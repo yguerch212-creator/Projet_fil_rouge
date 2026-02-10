@@ -1,6 +1,7 @@
 include("shared.lua")
 
 function ENT:Draw()
+    if self:GetNWBool("IsLoaded", false) then return end
     self:DrawModel()
 
     local obbMax = self:OBBMaxs()

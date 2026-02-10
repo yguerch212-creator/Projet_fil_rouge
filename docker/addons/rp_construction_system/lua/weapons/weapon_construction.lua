@@ -83,11 +83,66 @@ function SWEP:SecondaryAttack()
     net.SendToServer()
 end
 
--- Reload: Clear sélection
+-- Reload (R): Charger/décharger caisse sur véhicule OU clear sélection
 function SWEP:Reload()
     if CLIENT then return end
     local ply = self:GetOwner()
     if not IsValid(ply) then return end
+
+    if self.NextReload and self.NextReload > CurTime() then return end
+    self.NextReload = CurTime() + 0.5
+
+    local tr = ply:GetEyeTrace()
+
+    -- Véhicule simfphys visé ?
+    if IsValid(tr.Entity) and tr.Entity:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+        local vehicle = tr.Entity
+        local dist = ply:GetPos():Distance(vehicle:GetPos())
+        if dist > 300 then
+            DarkRP.notify(ply, 1, 3, "Trop loin du vehicule !")
+            return
+        end
+
+        -- Vérifier si ce véhicule a déjà une caisse chargée → décharger
+        for _, ent in ipairs(ents.FindByClass("construction_crate")) do
+            if ent.LoadedVehicle == vehicle then
+                ent:UnloadFromVehicle()
+                DarkRP.notify(ply, 0, 4, "Caisse dechargee du vehicule !")
+                return
+            end
+        end
+        for _, ent in ipairs(ents.FindByClass("construction_crate_small")) do
+            if ent.LoadedVehicle == vehicle then
+                ent:UnloadFromVehicle()
+                DarkRP.notify(ply, 0, 4, "Caisse dechargee du vehicule !")
+                return
+            end
+        end
+
+        -- Pas de caisse chargée → chercher une caisse proche du véhicule pour charger
+        local vPos = vehicle:GetPos()
+        local nearCrate = nil
+        local nearDist = 200 -- rayon de détection
+
+        for _, ent in ipairs(ents.FindInSphere(vPos, nearDist)) do
+            if (ent:GetClass() == "construction_crate" or ent:GetClass() == "construction_crate_small")
+               and not ent.LoadedVehicle
+               and not ent:GetNWBool("IsLoaded", false) then
+                nearCrate = ent
+                break
+            end
+        end
+
+        if nearCrate then
+            nearCrate:LoadOntoVehicle(vehicle)
+            DarkRP.notify(ply, 0, 4, "Caisse chargee sur le vehicule ! (" .. nearCrate:GetRemainingMats() .. " materiaux)")
+        else
+            DarkRP.notify(ply, 1, 3, "Aucune caisse a proximite du vehicule !")
+        end
+        return
+    end
+
+    -- Pas de véhicule visé → clear sélection (comportement normal)
     ConstructionSystem.Selection.Clear(ply)
 end
 
@@ -107,6 +162,6 @@ if CLIENT then
         local col = count >= maxP and Color(255, 50, 50) or Color(200, 200, 200)
         draw.SimpleText("Props: " .. count .. "/" .. maxP, "DermaDefault", boxX + boxW / 2, boxY + 24, col, TEXT_ALIGN_CENTER)
 
-        draw.SimpleText("LMB:Sel | RMB:Zone | Shift+RMB:Menu", "DermaDefault", boxX + boxW / 2, boxY + 40, Color(130, 130, 130), TEXT_ALIGN_CENTER)
+        draw.SimpleText("LMB:Sel | RMB:Zone | R:Vehicule/Clear", "DermaDefault", boxX + boxW / 2, boxY + 40, Color(130, 130, 130), TEXT_ALIGN_CENTER)
     end
 end

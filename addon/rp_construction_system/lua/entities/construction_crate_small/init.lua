@@ -24,6 +24,7 @@ end
 -- Permissions (même logique que la grosse caisse)
 hook.Add("PhysgunPickup", "Construction_SmallCratePhysgun", function(ply, ent)
     if ent:GetClass() ~= "construction_crate_small" then return end
+    if ent:GetNWBool("IsLoaded", false) then return false end
     local owner = ent:CPPIGetOwner()
     if IsValid(owner) and owner == ply then return true end
     if ply:IsAdmin() then return true end
@@ -39,7 +40,9 @@ hook.Add("CanTool", "Construction_SmallCrateTool", function(ply, tr, tool)
 end)
 
 hook.Add("GravGunPickupAllowed", "Construction_SmallCrateGravgun", function(ply, ent)
-    if ent:GetClass() == "construction_crate_small" then return true end
+    if ent:GetClass() ~= "construction_crate_small" then return end
+    if ent:GetNWBool("IsLoaded", false) then return false end
+    return true
 end)
 
 function ENT:GetRemainingMats()
@@ -60,10 +63,83 @@ function ENT:UseMaterial()
     return true
 end
 
+function ENT:CanPlayerUse(ply)
+    local allowed = ConstructionSystem.Config.CrateAllowedJobs
+    if not allowed then return true end
+    local team = ply:Team()
+    for _, jobId in ipairs(allowed) do
+        if team == jobId then return true end
+    end
+    return false
+end
+
+function ENT:LoadOntoVehicle(vehicle)
+    if not IsValid(vehicle) then return false end
+    if self.LoadedVehicle then return false end
+
+    self.LoadedVehicle = vehicle
+    self:SetNWEntity("LoadedVehicle", vehicle)
+    self:SetNWBool("IsLoaded", true)
+
+    self:SetNoDraw(true)
+    self:SetSolid(SOLID_NONE)
+    self:SetMoveType(MOVETYPE_NONE)
+    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+
+    self:SetParent(vehicle)
+    self:SetLocalPos(Vector(0, 0, 0))
+    self:SetLocalAngles(Angle(0, 0, 0))
+
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then phys:EnableMotion(false) end
+
+    return true
+end
+
+function ENT:UnloadFromVehicle()
+    if not self.LoadedVehicle then return false end
+
+    local vehicle = self.LoadedVehicle
+    self.LoadedVehicle = nil
+    self:SetNWEntity("LoadedVehicle", NULL)
+    self:SetNWBool("IsLoaded", false)
+
+    self:SetParent(nil)
+
+    local dropPos
+    if IsValid(vehicle) then
+        dropPos = vehicle:GetPos() + vehicle:GetRight() * 100 + Vector(0, 0, 30)
+    else
+        dropPos = self:GetPos() + Vector(0, 0, 50)
+    end
+    self:SetPos(dropPos)
+    self:SetAngles(Angle(0, 0, 0))
+
+    self:SetNoDraw(false)
+    self:SetSolid(SOLID_VPHYSICS)
+    self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetCollisionGroup(COLLISION_GROUP_NONE)
+
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(true)
+        phys:Wake()
+    end
+
+    return true
+end
+
 function ENT:Use(activator, caller)
     if not IsValid(activator) or not activator:IsPlayer() then return end
     if self.LastUse and self.LastUse > CurTime() then return end
     self.LastUse = CurTime() + 0.5
+
+    if self:GetNWBool("IsLoaded", false) then return end
+
+    if not self:CanPlayerUse(activator) then
+        DarkRP.notify(activator, 1, 3, "Votre metier n'a pas acces aux caisses de materiaux !")
+        return
+    end
 
     if self.Materials <= 0 then
         DarkRP.notify(activator, 1, 3, "Caisse vide !")
