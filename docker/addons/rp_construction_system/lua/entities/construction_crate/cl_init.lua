@@ -8,7 +8,9 @@ include("shared.lua")
 function ENT:Draw()
     self:DrawModel()
 
-    local pos = self:GetPos() + self:GetUp() * 45
+    local mins, maxs = self:GetModelBounds()
+    local height = maxs and maxs.z or 40
+    local pos = self:GetPos() + self:GetUp() * (height + 15)
     local ang = self:GetAngles()
     ang:RotateAroundAxis(ang:Up(), 90)
 
