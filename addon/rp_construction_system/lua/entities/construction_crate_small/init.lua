@@ -162,6 +162,37 @@ function ENT:Use(activator, caller)
     DarkRP.notify(activator, 0, 4, "Petite caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
 end
 
+function ENT:OnParented(parent)
+    if not IsValid(parent) then return end
+    if parent:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+        if not self.LoadedVehicle then
+            timer.Simple(0, function()
+                if not IsValid(self) or not IsValid(parent) then return end
+                self:LoadOntoVehicle(parent)
+            end)
+        end
+    end
+end
+
+function ENT:OnUnParented(parent)
+    if self.LoadedVehicle then
+        self.LoadedVehicle = nil
+        self:SetNWBool("IsLoaded", false)
+        self:SetNWEntity("LoadedVehicle", NULL)
+        self:SetNoDraw(false)
+        self:PhysicsInit(SOLID_VPHYSICS)
+        self:SetSolid(SOLID_VPHYSICS)
+        self:SetMoveType(MOVETYPE_VPHYSICS)
+        self:SetCollisionGroup(COLLISION_GROUP_NONE)
+        local phys = self:GetPhysicsObject()
+        if IsValid(phys) then
+            phys:SetMass(25)
+            phys:EnableMotion(true)
+            phys:Wake()
+        end
+    end
+end
+
 function ENT:OnRemove()
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) and ply.ActiveCrate == self then
