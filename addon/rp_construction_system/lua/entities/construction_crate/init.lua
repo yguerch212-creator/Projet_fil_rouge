@@ -109,46 +109,54 @@ end
 -- CHARGEMENT / DÉCHARGEMENT VÉHICULE
 ---------------------------------------------------------------------------
 
+-- Offsets de placement par modèle de véhicule (LocalPos dans le cargo)
+-- Opel Blitz: OBB -133 à +108 X, -46 à +46 Y, 0 à 115 Z
+local VehicleCargoOffsets = {
+    ["models/codww2blitz.mdl"]         = Vector(-80, 0, 45),
+    ["models/codww2blitzammo.mdl"]     = Vector(-80, 0, 45),
+    ["models/cckw6x6.mdl"]            = Vector(-80, 0, 45),
+    ["models/cckw6x6ammo.mdl"]        = Vector(-80, 0, 45),
+}
+local DefaultCargoOffset = Vector(-80, 0, 45)
+
 function ENT:LoadOntoVehicle(vehicle)
-    if not IsValid(vehicle) then print("[Construction] LoadOntoVehicle: vehicle invalid") return false end
-    if self.LoadedVehicle then print("[Construction] LoadOntoVehicle: already loaded") return false end
-
-    -- Lire les dimensions AVANT de toucher à la physique
-    local vMins, vMaxs = vehicle:OBBMins(), vehicle:OBBMaxs()
-    local cMins, cMaxs = self:OBBMins(), self:OBBMaxs()
-    local crateH = cMaxs.z - cMins.z
-
-    -- Calculer le placement dans le cargo
-    local cargoX = vMins.x * 0.6  -- arrière du véhicule
-    local cargoY = 0               -- centré
-    local cargoZ = vMaxs.z - crateH - 5  -- juste sous le toit
-
-    print("[Construction] LoadOntoVehicle: vOBB=(" .. tostring(vMins) .. " / " .. tostring(vMaxs) .. ")")
-    print("[Construction] LoadOntoVehicle: crateH=" .. crateH .. " pos=" .. cargoX .. "," .. cargoY .. "," .. cargoZ)
+    if not IsValid(vehicle) then return false end
+    if self.LoadedVehicle then return false end
 
     self.LoadedVehicle = vehicle
 
-    -- 1. Détruire la physique
+    -- Sauvegarder le modèle original pour le respawn
+    self._OrigModel = self:GetModel()
+
+    -- 1. Détacher si déjà parenté à autre chose
+    local curParent = self:GetParent()
+    if IsValid(curParent) and curParent ~= vehicle then
+        self:SetParent(nil)
+    end
+
+    -- 2. Détruire la physique
     self:PhysicsDestroy()
 
-    -- 2. No-collide
+    -- 3. No-collide
     self:SetSolid(SOLID_NONE)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 
-    -- 3. Attacher au véhicule
-    self:SetParent(vehicle)
+    -- 4. Attacher au véhicule (si pas déjà)
+    if self:GetParent() ~= vehicle then
+        self:SetParent(vehicle)
+    end
 
-    -- 4. Placer (APRÈS SetParent)
-    self:SetLocalPos(Vector(cargoX, cargoY, cargoZ))
+    -- 5. Placement par modèle de véhicule
+    local vModel = vehicle:GetModel() or ""
+    local offset = VehicleCargoOffsets[vModel] or DefaultCargoOffset
+    self:SetLocalPos(offset)
     self:SetLocalAngles(Angle(0, 0, 0))
 
     -- 5. NW vars
     self:SetNWBool("IsLoaded", true)
     self:SetNWEntity("LoadedVehicle", vehicle)
 
-    -- Vérification
-    print("[Construction] LOADED: Solid=" .. self:GetSolid() .. " CollGroup=" .. self:GetCollisionGroup() .. " LocalPos=" .. tostring(self:GetLocalPos()) .. " HasPhys=" .. tostring(IsValid(self:GetPhysicsObject())))
     return true
 end
 
@@ -162,7 +170,7 @@ function ENT:UnloadFromVehicle()
     self:SetNWBool("IsLoaded", false)
     self:SetNWEntity("LoadedVehicle", NULL)
 
-    -- Détacher
+    -- Détacher AVANT de recréer la physique
     self:SetParent(nil)
 
     -- Réapparaître à côté du véhicule
@@ -175,14 +183,13 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    -- Visible
-    self:SetNoDraw(false)
-
-    -- Recréer la physique complète
+    -- Recréer le modèle + physique from scratch
+    self:SetModel(self._OrigModel or ConstructionSystem.Config.CrateModel)
     self:PhysicsInit(SOLID_VPHYSICS)
-    self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetSolid(SOLID_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
+    self:SetNoDraw(false)
 
     local phys = self:GetPhysicsObject()
     if IsValid(phys) then
@@ -191,45 +198,7 @@ function ENT:UnloadFromVehicle()
         phys:Wake()
     end
 
-    print("[Construction] Caisse " .. tostring(self) .. " dechargee")
     return true
-end
-
--- Détecte quand la caisse est parentée par n'importe quel moyen (physgun, etc.)
-function ENT:OnParented(parent)
-    if not IsValid(parent) then return end
-    
-    -- Si parentée à un véhicule simfphys, appliquer le chargement
-    if parent:GetClass() == "gmod_sent_vehicle_fphysics_base" then
-        if not self.LoadedVehicle then
-            timer.Simple(0, function()
-                if not IsValid(self) or not IsValid(parent) then return end
-                self:LoadOntoVehicle(parent)
-            end)
-        end
-    end
-end
-
--- Détecte quand la caisse est départentée
-function ENT:OnUnParented(parent)
-    if self.LoadedVehicle then
-        self.LoadedVehicle = nil
-        self:SetNWBool("IsLoaded", false)
-        self:SetNWEntity("LoadedVehicle", NULL)
-        
-        self:SetNoDraw(false)
-        self:PhysicsInit(SOLID_VPHYSICS)
-        self:SetSolid(SOLID_VPHYSICS)
-        self:SetMoveType(MOVETYPE_VPHYSICS)
-        self:SetCollisionGroup(COLLISION_GROUP_NONE)
-        
-        local phys = self:GetPhysicsObject()
-        if IsValid(phys) then
-            phys:SetMass(50)
-            phys:EnableMotion(true)
-            phys:Wake()
-        end
-    end
 end
 
 function ENT:OnRemove()

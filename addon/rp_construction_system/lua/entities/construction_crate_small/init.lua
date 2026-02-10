@@ -78,6 +78,7 @@ function ENT:LoadOntoVehicle(vehicle)
     if self.LoadedVehicle then return false end
 
     self.LoadedVehicle = vehicle
+    self._OrigModel = self:GetModel()
 
     self:PhysicsDestroy()
     self:SetSolid(SOLID_NONE)
@@ -85,17 +86,8 @@ function ENT:LoadOntoVehicle(vehicle)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 
     self:SetParent(vehicle)
-
-    local vMins, vMaxs = vehicle:OBBMins(), vehicle:OBBMaxs()
-    local cMins, cMaxs = self:OBBMins(), self:OBBMaxs()
-    local crateH = cMaxs.z - cMins.z
-    local cargoX = vMins.x * 0.6
-    local cargoZ = vMaxs.z - crateH - 5
-
-    self:SetLocalPos(Vector(cargoX, 0, cargoZ))
+    self:SetLocalPos(Vector(-80, 0, 45))
     self:SetLocalAngles(Angle(0, 0, 0))
-
-    -- Visible mais sans collision
 
     self:SetNWBool("IsLoaded", true)
     self:SetNWEntity("LoadedVehicle", vehicle)
@@ -123,12 +115,12 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    self:SetNoDraw(false)
-
+    self:SetModel(self._OrigModel or ConstructionSystem.Config.SmallCrateModel)
     self:PhysicsInit(SOLID_VPHYSICS)
-    self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetSolid(SOLID_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
+    self:SetNoDraw(false)
 
     local phys = self:GetPhysicsObject()
     if IsValid(phys) then
@@ -160,37 +152,6 @@ function ENT:Use(activator, caller)
     activator.ActiveCrate = self
     activator:SetNWEntity("ActiveCrate", self)
     DarkRP.notify(activator, 0, 4, "Petite caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
-end
-
-function ENT:OnParented(parent)
-    if not IsValid(parent) then return end
-    if parent:GetClass() == "gmod_sent_vehicle_fphysics_base" then
-        if not self.LoadedVehicle then
-            timer.Simple(0, function()
-                if not IsValid(self) or not IsValid(parent) then return end
-                self:LoadOntoVehicle(parent)
-            end)
-        end
-    end
-end
-
-function ENT:OnUnParented(parent)
-    if self.LoadedVehicle then
-        self.LoadedVehicle = nil
-        self:SetNWBool("IsLoaded", false)
-        self:SetNWEntity("LoadedVehicle", NULL)
-        self:SetNoDraw(false)
-        self:PhysicsInit(SOLID_VPHYSICS)
-        self:SetSolid(SOLID_VPHYSICS)
-        self:SetMoveType(MOVETYPE_VPHYSICS)
-        self:SetCollisionGroup(COLLISION_GROUP_NONE)
-        local phys = self:GetPhysicsObject()
-        if IsValid(phys) then
-            phys:SetMass(25)
-            phys:EnableMotion(true)
-            phys:Wake()
-        end
-    end
 end
 
 function ENT:OnRemove()
