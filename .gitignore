@@ -1,7 +1,14 @@
-# Docker volumes
+# Docker volumes & runtime data
 docker/gmod-data/
 docker/mysql-data/
 *.log
+
+# DarkRP source (installed via Workshop/git, not tracked)
+docker/addons/darkrp/
+docker/gamemodes/darkrp/
+
+# Client download cache (already in addon)
+docker/download/
 
 # Sauvegardes
 backups/
@@ -14,6 +21,13 @@ backups/
 # Secrets
 *.env
 passwords.txt
+
+# Références internes
 references/
-references/
+
+# Binaires
 docker/lua-bin/*.dll
+
+# Screenshots dev
+screenshots/
+.gitlab-ci.yml

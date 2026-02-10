@@ -82,7 +82,7 @@ L'image **`ceifa/garrysmod`** a été choisie car c'est la seule image Docker ma
 ```yaml
 services:
   gmod:
-    image: projetfilrouge/gmod-server:jour2-stable  # Image commitée après Workshop DL
+    image: projetfilrouge/gmod-server:v1.1-mysql  # Image commitée après Workshop DL
     container_name: gmod-server
     ports: ["27015:27015/udp", "27015:27015/tcp"]
     mem_limit: 3G
@@ -188,7 +188,7 @@ services:
 
 **Solution** : Après le premier démarrage réussi, sauvegarder l'état du container via `docker commit` :
 ```bash
-docker commit gmod-server projetfilrouge/gmod-server:jour2-stable
+docker commit gmod-server projetfilrouge/gmod-server:v1.1-mysql
 ```
 Les démarrages suivants utilisent cette image commitée et sont quasi-instantanés.
 
@@ -322,7 +322,7 @@ Même approche pour `CanTool`, `GravGunPickupAllowed`, etc.
 
 ## 📅 Chronologie du développement
 
-### Jour 1 — Infrastructure Docker & Structure
+### Étape 1 — Infrastructure Docker & Structure
 - Installation Docker sur VPS Hostinger (16 Go RAM)
 - Recherche et test de l'image `ceifa/garrysmod`
 - Création du `docker-compose.yml` (GMod + MySQL 8.0)
@@ -330,7 +330,7 @@ Même approche pour `CanTool`, `GravGunPickupAllowed`, etc.
 - `docker commit` pour sauvegarder l'image avec le Workshop
 - Création de la structure du projet Git
 
-### Jour 2 — Configuration DarkRP & MySQL
+### Étape 2 — Configuration DarkRP & MySQL
 - Installation de DarkRP (gamemode + darkrpmodification)
 - Configuration des jobs (TEAM_BUILDER = Constructeur)
 - Installation MySQLOO 64-bit (résolution du bug 32-bit)
@@ -338,53 +338,53 @@ Même approche pour `CanTool`, `GravGunPickupAllowed`, etc.
 - Test de connexion MySQLOO via hostname Docker `gmod-mysql`
 - Premier commit avec infrastructure fonctionnelle
 
-### Jour 3 — Système de sélection (STOOL initial)
+### Étape 3 — Système de sélection (STOOL initial)
 - Développement du STOOL `construction_select` (Tool Gun)
 - Système de sélection par clic (CPPI ownership check)
 - Sélection par rayon (clic droit)
 - Rendu visuel avec halos bleus (client)
 - Synchronisation client/serveur de la sélection
 
-### Jour 4-5 — Sérialisation & Blueprints
+### Étape 4 — Sérialisation & Blueprints
 - Sérialisation des props (positions relatives, modèles, physique)
 - Résolution : Vector/Angle → table en JSON → reconstruction custom
 - Compression : `util.TableToJSON()` → `util.Compress()` → `util.Base64Encode()`
 - Sauvegarde/chargement depuis MySQL (prepared statements)
 - Batch spawning (5 props par tick, anti-lag)
 
-### Jour 6 — Permissions & Partage
+### Étape 5 — Permissions & Partage
 - Système de permissions (view, use, edit)
 - Partage entre joueurs via SteamID
 - Interface Derma pour la gestion des permissions
 - Vérification des permissions à chaque action
 
-### Jour 7 — Sécurité
+### Étape 6 — Sécurité
 - Rate limiting par action (cooldowns configurables)
 - Blacklist de classes d'entités (money_printer, drug_lab, etc.)
 - Validation serveur de chaque blueprint reçu
 - Restrictions par job DarkRP
 - Logging de toutes les actions en base de données
 
-### Jour 8 — Refonte v2.0 : SWEP + Ghosts + Caisses
+### Étape 7 — Refonte v2.0 : SWEP + Ghosts + Caisses
 - Migration du STOOL vers un **SWEP dédié** (`weapon_construction`)
 - Développement des ghost entities (non-solides, holographiques)
 - Développement des caisses de matériaux (grosse 50 + petite 15)
 - Système de matérialisation (Use sur ghost avec caisse active)
 - Résolution des problèmes FPP/CPPI
 
-### Jour 9 — Placement avancé & Interface
+### Étape 8 — Placement avancé & Interface
 - Panneau de placement AdvDupe2-style (rotation, hauteur, position originale)
 - Prévisualisation holographique avant confirmation
 - Décodeur AdvDupe2 embarqué (import fichiers .txt)
 - UI moderne dark theme avec sidebar et navigation dossiers
 
-### Jour 10 — Sauvegardes locales & Documentation
+### Étape 9 — Sauvegardes locales & Documentation
 - Migration des blueprints vers stockage **local client** (`data/construction_blueprints/`)
 - Support des sous-dossiers
 - Badges AD2 dans l'interface
 - Documentation complète (README, ARCHITECTURE, guides)
 
-### Jour 11 — Véhicules simfphys v2.2
+### Étape 10 — Véhicules simfphys v2.2
 - Module véhicules serveur (`sv_vehicles.lua`) et client (`cl_vehicles.lua`)
 - Détection automatique simfphys, LVS, Source vehicles
 - Système d'attachement via `SetParent()` + physique désactivée
@@ -394,7 +394,7 @@ Même approche pour `CanTool`, `GravGunPickupAllowed`, etc.
 - HUD véhicule client (instructions charger/décharger)
 - `PlayerBindPress` pour la touche R côté client
 
-### Jour 12 — Finalisation & Tests
+### Étape 11 — Finalisation & Tests
 - Tests complets en conditions réelles (multi-joueurs)
 - Résolution du problème SWEP:Reload() avec ClipSize=-1
 - Résolution du problème KeyPress + IN_RELOAD

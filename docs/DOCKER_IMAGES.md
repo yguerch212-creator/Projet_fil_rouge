@@ -8,7 +8,7 @@ Toujours maintenir une image Docker stable avec les addons pré-chargés.
 
 | Tag | Description | Date |
 |-----|------------|------|
-| `projetfilrouge/gmod-server:jour1-stable` | Base GMod + DarkRP + 101 addons workshop | 2026-02-07 |
+| `projetfilrouge/gmod-server:v1.0-base` | Base GMod + DarkRP + 101 addons workshop | 2026-02-07 |
 
 ## Commandes utiles
 
@@ -25,7 +25,7 @@ docker images | grep projetfilrouge
 ### Restaurer depuis une image stable
 Modifier `docker-compose.yml` :
 ```yaml
-image: projetfilrouge/gmod-server:jour1-stable
+image: projetfilrouge/gmod-server:v1.0-base
 ```
 au lieu de :
 ```yaml
@@ -35,10 +35,10 @@ image: ceifa/garrysmod:latest
 ### Exporter/Importer une image (backup)
 ```bash
 # Export
-docker save projetfilrouge/gmod-server:jour1-stable | gzip > backups/gmod-jour1-stable.tar.gz
+docker save projetfilrouge/gmod-server:v1.0-base | gzip > backups/gmod-v1.0-base.tar.gz
 
 # Import
-docker load < backups/gmod-jour1-stable.tar.gz
+docker load < backups/gmod-v1.0-base.tar.gz
 ```
 
 ## Workflow

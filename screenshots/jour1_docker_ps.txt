@@ -1,3 +1,0 @@
-CONTAINER ID   IMAGE                    COMMAND                  CREATED          STATUS                             PORTS                                                                                                         NAMES
-95813a66df60   ceifa/garrysmod:latest   "/home/gmod/start.sh"    37 seconds ago   Up 37 seconds (health: starting)   27005/udp, 0.0.0.0:27015->27015/tcp, 0.0.0.0:27015->27015/udp, [::]:27015->27015/tcp, [::]:27015->27015/udp   gmod-server
-d5a3e8c30f54   mysql:8.0                "docker-entrypoint.s…"   37 seconds ago   Up 37 seconds (healthy)            0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060/tcp                                                        gmod-mysql

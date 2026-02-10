@@ -1,21 +1,21 @@
 # Journal de Développement
 
-## Jour 1 - Infrastructure Docker + DarkRP
+## Étape 1 - Infrastructure Docker + DarkRP
 - Mise en place Docker Compose (ceifa/garrysmod + MySQL 8.0)
 - Installation DarkRP, configuration serveur
 - Workshop collection (101 addons)
 - Addon `darkrpmodification` : jobs, catégories, settings
-- Image Docker sauvegardée : `jour1-stable`, `jour1-final`
+- Image Docker sauvegardée : `v1.0-base`, `v1.0-final`
 
-## Jour 2 - Base de données MySQL
+## Étape 2 - Base de données MySQL
 - Installation MySQLOO 9.7.6 (module binaire Linux 64-bit)
 - Configuration partagée `sh_config.lua`
 - Module `sv_database.lua` : connexion auto-reconnect, CRUD blueprints, permissions, logging
 - Schéma BDD : 3 tables (blueprints, blueprint_permissions, blueprint_logs)
 - Prepared statements pour la sécurité SQL
-- Image Docker : `jour2-stable`
+- Image Docker : `v1.1-mysql`
 
-## Jour 3-5 - Système de sélection + Blueprints + Interface
+## Étape 3 - Système de sélection + Blueprints + Interface
 - SWEP `weapon_construction` : arme dédiée au job Constructeur
   * LMB: sélectionner/désélectionner un prop
   * RMB: sélection par zone (rayon configurable)
@@ -25,13 +25,13 @@
 - Menu Derma : 3 onglets (Mes Blueprints, Sauvegarder, Infos)
 - Vérification ownership CPPI (prop protection compatible)
 
-## Jour 6-7 - Permissions, sécurité, partage
+## Étape 4 - Permissions, sécurité, partage
 - Partage de blueprints entre joueurs (view/use/edit)
 - Rate limiting global (60 req/min)
 - Restriction par job (CanTool hook)
 - Commandes admin : `construction_logs`, `construction_stats`
 
-## Jour 8-10 - Système de construction RP (v2.0)
+## Étape 5 - Système de construction RP (v2.0)
 ### Refactoring majeur : système de ghosts + caisses de matériaux
 
 **Nouveau flow de jeu :**
