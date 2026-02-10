@@ -114,11 +114,15 @@ function ENT:LoadOntoVehicle(vehicle)
     if self.LoadedVehicle then return false end
 
     self.LoadedVehicle = vehicle
-    self:SetNWEntity("LoadedVehicle", vehicle)
-    self:SetNWBool("IsLoaded", true)
 
-    -- Invisible + no-collide
-    self:SetNoDraw(true)
+    -- Désactiver la physique AVANT le parent
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(false)
+        phys:Sleep()
+    end
+
+    -- No-collide AVANT le parent
     self:SetSolid(SOLID_NONE)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
@@ -128,12 +132,15 @@ function ENT:LoadOntoVehicle(vehicle)
     self:SetLocalPos(Vector(0, 0, 0))
     self:SetLocalAngles(Angle(0, 0, 0))
 
-    -- Désactiver la physique
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then
-        phys:EnableMotion(false)
-    end
+    -- Invisible : NoDraw + AddEffects EF_NODRAW (double sécurité)
+    self:SetNoDraw(true)
+    self:AddEffects(EF_NODRAW)
 
+    -- NW vars en dernier (propagation client)
+    self:SetNWBool("IsLoaded", true)
+    self:SetNWEntity("LoadedVehicle", vehicle)
+
+    print("[Construction] Caisse " .. tostring(self) .. " chargee sur " .. tostring(vehicle))
     return true
 end
 
@@ -142,24 +149,29 @@ function ENT:UnloadFromVehicle()
 
     local vehicle = self.LoadedVehicle
     self.LoadedVehicle = nil
-    self:SetNWEntity("LoadedVehicle", NULL)
+
+    -- NW vars
     self:SetNWBool("IsLoaded", false)
+    self:SetNWEntity("LoadedVehicle", NULL)
 
     -- Détacher
     self:SetParent(nil)
 
-    -- Réapparaître à côté du véhicule (ou du joueur)
+    -- Réapparaître à côté du véhicule
     local dropPos
     if IsValid(vehicle) then
-        dropPos = vehicle:GetPos() + vehicle:GetRight() * 100 + Vector(0, 0, 30)
+        dropPos = vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50)
     else
         dropPos = self:GetPos() + Vector(0, 0, 50)
     end
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    -- Visible + solide
+    -- Visible : retirer EF_NODRAW + SetNoDraw false
+    self:RemoveEffects(EF_NODRAW)
     self:SetNoDraw(false)
+
+    -- Solide
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
@@ -171,6 +183,7 @@ function ENT:UnloadFromVehicle()
         phys:Wake()
     end
 
+    print("[Construction] Caisse " .. tostring(self) .. " dechargee")
     return true
 end
 

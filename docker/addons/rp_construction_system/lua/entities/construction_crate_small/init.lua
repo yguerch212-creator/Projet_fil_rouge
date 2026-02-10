@@ -78,10 +78,13 @@ function ENT:LoadOntoVehicle(vehicle)
     if self.LoadedVehicle then return false end
 
     self.LoadedVehicle = vehicle
-    self:SetNWEntity("LoadedVehicle", vehicle)
-    self:SetNWBool("IsLoaded", true)
 
-    self:SetNoDraw(true)
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(false)
+        phys:Sleep()
+    end
+
     self:SetSolid(SOLID_NONE)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
@@ -90,8 +93,11 @@ function ENT:LoadOntoVehicle(vehicle)
     self:SetLocalPos(Vector(0, 0, 0))
     self:SetLocalAngles(Angle(0, 0, 0))
 
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then phys:EnableMotion(false) end
+    self:SetNoDraw(true)
+    self:AddEffects(EF_NODRAW)
+
+    self:SetNWBool("IsLoaded", true)
+    self:SetNWEntity("LoadedVehicle", vehicle)
 
     return true
 end
@@ -101,21 +107,24 @@ function ENT:UnloadFromVehicle()
 
     local vehicle = self.LoadedVehicle
     self.LoadedVehicle = nil
-    self:SetNWEntity("LoadedVehicle", NULL)
+
     self:SetNWBool("IsLoaded", false)
+    self:SetNWEntity("LoadedVehicle", NULL)
 
     self:SetParent(nil)
 
     local dropPos
     if IsValid(vehicle) then
-        dropPos = vehicle:GetPos() + vehicle:GetRight() * 100 + Vector(0, 0, 30)
+        dropPos = vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50)
     else
         dropPos = self:GetPos() + Vector(0, 0, 50)
     end
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
+    self:RemoveEffects(EF_NODRAW)
     self:SetNoDraw(false)
+
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
