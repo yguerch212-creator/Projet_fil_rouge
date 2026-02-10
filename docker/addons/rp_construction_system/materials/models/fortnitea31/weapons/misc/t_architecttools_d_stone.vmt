@@ -1,0 +1,5 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/FortniteA31/Weapons/Misc/T_ArchitectTools_D_Stone"
+	"$nocull" 1
+}

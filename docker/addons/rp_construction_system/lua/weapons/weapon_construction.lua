@@ -27,8 +27,8 @@ SWEP.SlotPos = 5
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = true
 
-SWEP.ViewModel = "models/weapons/v_slam.mdl"
-SWEP.WorldModel = "models/weapons/w_slam.mdl"
+SWEP.ViewModel = "models/weapons/v_fortnite_builder.mdl"
+SWEP.WorldModel = "models/weapons/w_fortnite_builder.mdl"
 SWEP.UseHands = true
 SWEP.HoldType = "slam"
 

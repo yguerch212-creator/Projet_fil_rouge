@@ -1,0 +1,6 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/FortniteA31/Weapons/Misc/T_ArchitectTools_D"
+        "$bumpmap"     "models/FortniteA31/Weapons/Misc/T_ArchitectTools_N"
+	"$nocull" 1
+}
