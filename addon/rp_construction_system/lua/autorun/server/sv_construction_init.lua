@@ -46,10 +46,11 @@ AddCSLuaFile("rp_construction/cl_blueprints.lua")
 AddCSLuaFile("rp_construction/cl_menu.lua")
 AddCSLuaFile("rp_construction/cl_placement.lua")
 
--- 10. Ressources custom (modèles/textures à télécharger par le client)
--- Note: resource.AddFile ne fonctionne qu'avec FastDL ou Workshop
--- Les modèles Fortnite sont inclus dans l'addon mais nécessitent FastDL pour le client
--- Le SWEP utilise c_slam.mdl (HL2, disponible nativement)
+-- 10. Ressources Workshop (le client télécharge ces addons pour les modèles/textures)
+-- Fortnite Building Tool (viewmodel v_fortnite_builder.mdl)
+resource.AddWorkshop("1433010063")
+-- Fortnite Player Structures (textures ArchitectTools nécessaires au viewmodel)
+resource.AddWorkshop("1290527288")
 -- Caisse modèle + textures
 resource.AddFile("models/hts/ww2ns/props/dun/dun_wood_crate_03.mdl")
 resource.AddFile("models/hts/ww2ns/props/dun/dun_wood_crate_03.vvd")
