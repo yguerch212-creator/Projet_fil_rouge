@@ -164,13 +164,15 @@ function ENT:UnloadFromVehicle()
     if not self.LoadedVehicle then return false end
 
     local vehicle = self.LoadedVehicle
+    local savedMats = self.Materials
     self.LoadedVehicle = nil
+    self._IsUnloading = true  -- Flag pour que Think ne re-load pas
 
     -- NW vars
     self:SetNWBool("IsLoaded", false)
     self:SetNWEntity("LoadedVehicle", NULL)
 
-    -- Détacher AVANT de recréer la physique
+    -- Détacher
     self:SetParent(nil)
 
     -- Réapparaître à côté du véhicule
@@ -183,26 +185,40 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    -- Recréer le modèle + physique from scratch
-    self:SetModel(self._OrigModel or ConstructionSystem.Config.CrateModel)
-    self:PhysicsInit(SOLID_VPHYSICS)
-    self:SetMoveType(MOVETYPE_VPHYSICS)
-    self:SetSolid(SOLID_VPHYSICS)
-    self:SetCollisionGroup(COLLISION_GROUP_NONE)
-    self:SetNoDraw(false)
+    -- Recréer la physique au tick suivant (nécessaire après PhysicsDestroy)
+    local ent = self
+    timer.Simple(0.1, function()
+        if not IsValid(ent) then return end
 
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then
-        phys:SetMass(50)
-        phys:EnableMotion(true)
-        phys:Wake()
-    end
+        ent:SetModel(ent._OrigModel or ConstructionSystem.Config.CrateModel)
+        ent:PhysicsInit(SOLID_VPHYSICS)
+        ent:SetMoveType(MOVETYPE_VPHYSICS)
+        ent:SetSolid(SOLID_VPHYSICS)
+        ent:SetCollisionGroup(COLLISION_GROUP_NONE)
+        ent:SetUseType(SIMPLE_USE)
+        ent:SetNoDraw(false)
+
+        local phys = ent:GetPhysicsObject()
+        if IsValid(phys) then
+            phys:SetMass(50)
+            phys:EnableMotion(true)
+            phys:Wake()
+        end
+
+        -- Restaurer les matériaux
+        ent.Materials = savedMats
+        ent:SetNWInt("materials", savedMats)
+
+        ent._IsUnloading = false
+    end)
 
     return true
 end
 
 -- Think: détecte automatiquement quand la caisse est parentée à un véhicule
 function ENT:Think()
+    if self._IsUnloading then self:NextThink(CurTime() + 0.5) return true end
+    
     local parent = self:GetParent()
     
     -- Si parentée à un simfphys et pas encore "loaded" → charger

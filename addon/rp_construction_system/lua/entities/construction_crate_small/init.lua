@@ -103,6 +103,7 @@ function ENT:UnloadFromVehicle()
 
     self:SetNWBool("IsLoaded", false)
     self:SetNWEntity("LoadedVehicle", NULL)
+    self._IsUnloading = true
 
     self:SetParent(nil)
 
@@ -115,19 +116,27 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    self:SetModel(self._OrigModel or ConstructionSystem.Config.SmallCrateModel)
-    self:PhysicsInit(SOLID_VPHYSICS)
-    self:SetMoveType(MOVETYPE_VPHYSICS)
-    self:SetSolid(SOLID_VPHYSICS)
-    self:SetCollisionGroup(COLLISION_GROUP_NONE)
-    self:SetNoDraw(false)
-
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then
-        phys:SetMass(25)
-        phys:EnableMotion(true)
-        phys:Wake()
-    end
+    local ent = self
+    local savedMats = self.Materials
+    timer.Simple(0.1, function()
+        if not IsValid(ent) then return end
+        ent:SetModel(ent._OrigModel or ConstructionSystem.Config.SmallCrateModel)
+        ent:PhysicsInit(SOLID_VPHYSICS)
+        ent:SetMoveType(MOVETYPE_VPHYSICS)
+        ent:SetSolid(SOLID_VPHYSICS)
+        ent:SetCollisionGroup(COLLISION_GROUP_NONE)
+        ent:SetUseType(SIMPLE_USE)
+        ent:SetNoDraw(false)
+        local phys = ent:GetPhysicsObject()
+        if IsValid(phys) then
+            phys:SetMass(25)
+            phys:EnableMotion(true)
+            phys:Wake()
+        end
+        ent.Materials = savedMats
+        ent:SetNWInt("materials", savedMats)
+        ent._IsUnloading = false
+    end)
 
     return true
 end
@@ -155,6 +164,7 @@ function ENT:Use(activator, caller)
 end
 
 function ENT:Think()
+    if self._IsUnloading then self:NextThink(CurTime() + 0.5) return true end
     local parent = self:GetParent()
     if IsValid(parent) and parent:GetClass() == "gmod_sent_vehicle_fphysics_base" and not self.LoadedVehicle then
         self:LoadOntoVehicle(parent)
