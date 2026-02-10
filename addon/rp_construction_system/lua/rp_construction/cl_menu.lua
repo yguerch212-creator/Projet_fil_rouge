@@ -760,9 +760,9 @@ end
 ---------------------------------------------------------------------------
 
 function ConstructionSystem.Menu.LoadBlueprint(filename, subdir)
-    local blueprint = ConstructionSystem.LocalBlueprints.Load(filename, subdir)
+    local blueprint, err = ConstructionSystem.LocalBlueprints.Load(filename, subdir)
     if not blueprint then
-        chat.AddText(Colors.danger, "[Construction] Blueprint introuvable: " .. tostring(filename))
+        chat.AddText(Colors.danger, "[Construction] Erreur: " .. tostring(err or "fichier introuvable") .. " (" .. tostring(filename) .. ")")
         return
     end
 

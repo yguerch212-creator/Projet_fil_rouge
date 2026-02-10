@@ -98,12 +98,8 @@ end
 ---------------------------------------------------------------------------
 
 --- Tente de lire un fichier AdvDupe2 (.txt) et le convertit en notre format
+--- Utilise notre décodeur embarqué (cl_ad2_decoder.lua) — aucune dépendance externe
 local function ReadAdvDupe2File(filepath)
-    -- Vérifier que AdvDupe2 est chargé
-    if not AdvDupe2 or not AdvDupe2.Decode then
-        return nil, "AdvDupe2 non disponible"
-    end
-
     -- Lire le fichier binaire
     local f = file.Open(filepath, "rb", "DATA")
     if not f then return nil, "Impossible d'ouvrir le fichier" end
@@ -112,64 +108,17 @@ local function ReadAdvDupe2File(filepath)
 
     if not data or #data < 5 then return nil, "Fichier trop petit" end
 
-    -- Vérifier la signature AD2F
-    local sig = data:sub(1, 4)
-    if sig ~= "AD2F" then
-        -- Peut-être un fichier AD1 (legacy)
-        if sig ~= "[Inf" then
-            return nil, "Pas un fichier AdvDupe2 valide"
-        end
+    -- Décoder avec notre décodeur embarqué
+    local dupeTable, info, err = ConstructionSystem.AD2Decoder.Decode(data)
+    if not dupeTable then
+        return nil, err or "Erreur décodage AD2"
     end
 
-    -- Décoder
-    local success, dupeTable, info = AdvDupe2.Decode(data)
-    if not success then
-        return nil, "Erreur décodage: " .. tostring(dupeTable)
+    -- Convertir en blueprint
+    local blueprint, convertErr = ConstructionSystem.AD2Decoder.ToBlueprint(dupeTable, info)
+    if not blueprint then
+        return nil, convertErr or "Erreur conversion AD2"
     end
-
-    -- Convertir le format AD2 vers notre format
-    local entities = {}
-    local propCount = 0
-
-    if dupeTable.Entities then
-        for idx, entData in pairs(dupeTable.Entities) do
-            local converted = {}
-            converted.Class = entData.Class or "prop_physics"
-            converted.Model = entData.Model or ""
-
-            -- Position depuis PhysicsObjects[0]
-            if entData.PhysicsObjects and entData.PhysicsObjects[0] then
-                local phys = entData.PhysicsObjects[0]
-                converted.Pos = phys.Pos or phys.LocalPos or Vector(0, 0, 0)
-                converted.Angles = phys.Angle or phys.LocalAngle or Angle(0, 0, 0)
-                -- Données physiques optionnelles
-                if phys.Frozen ~= nil then converted.Frozen = phys.Frozen end
-            else
-                converted.Pos = entData.Pos or Vector(0, 0, 0)
-                converted.Angles = entData.Angle or Angle(0, 0, 0)
-            end
-
-            -- Copier les données supplémentaires utiles
-            if entData.Skin then converted.Skin = entData.Skin end
-            if entData.Color then converted.Color = entData.Color end
-            if entData.Material then converted.Material = entData.Material end
-            if entData.BodyG then converted.BodyG = entData.BodyG end
-
-            propCount = propCount + 1
-            table.insert(entities, converted)
-        end
-    end
-
-    -- Construire le blueprint dans notre format
-    local blueprint = {
-        entities = entities,
-        name = (info and info.name) or "Import AD2",
-        description = "Importé depuis AdvDupe2",
-        prop_count = propCount,
-        created_at = os.date("%Y-%m-%d %H:%M"),
-        imported_from = "advdupe2",
-        version = ConstructionSystem.Config.Version or "2.0.0",
-    }
 
     return blueprint
 end
@@ -215,24 +164,36 @@ function ConstructionSystem.LocalBlueprints.Load(filename, subdir)
 
     -- 1. Essayer .dat (notre format natif)
     local datPath = dir .. "/" .. filename .. ".dat"
+    print("[Construction] Load: trying " .. datPath)
     if file.Exists(datPath, "DATA") then
         local content = file.Read(datPath, "DATA")
-        if not content then return nil, "Erreur lecture" end
+        if not content then return nil, "Erreur lecture .dat" end
         local blueprint = util.JSONToTable(content)
-        if not blueprint then return nil, "Fichier corrompu" end
+        if not blueprint then return nil, "Fichier .dat corrompu" end
         return blueprint
     end
 
     -- 2. Essayer .txt (AdvDupe2)
     local txtPath = dir .. "/" .. filename .. ".txt"
+    print("[Construction] Load: trying " .. txtPath)
     if file.Exists(txtPath, "DATA") then
+        print("[Construction] Load: found .txt, attempting AD2 import...")
         local blueprint, err = ReadAdvDupe2File(txtPath)
-        if not blueprint then return nil, "Erreur import AD2: " .. tostring(err) end
+        if not blueprint then
+            print("[Construction] Load: AD2 import failed: " .. tostring(err))
+            return nil, "Erreur import AD2: " .. tostring(err)
+        end
         blueprint.filename = filename
+        print("[Construction] Load: AD2 import OK, " .. (blueprint.prop_count or 0) .. " props")
         return blueprint
     end
 
-    return nil, "Fichier introuvable"
+    -- 3. Lister ce qui existe pour debug
+    local datFiles = file.Find(dir .. "/*.dat", "DATA")
+    local txtFiles = file.Find(dir .. "/*.txt", "DATA")
+    print("[Construction] Load: file not found. Dir=" .. dir .. " .dat=" .. #(datFiles or {}) .. " .txt=" .. #(txtFiles or {}))
+
+    return nil, "Fichier introuvable dans " .. dir .. " (cherché: " .. filename .. ".dat/.txt)"
 end
 
 --- Supprimer un blueprint

@@ -131,21 +131,47 @@ local function RebuildVectors(data)
     if not data or not data.Entities then return data end
 
     -- Rebuild OriginalCenter
-    if data.OriginalCenter and type(data.OriginalCenter) == "table" then
-        data.OriginalCenter = Vector(
-            data.OriginalCenter.x or 0,
-            data.OriginalCenter.y or 0,
-            data.OriginalCenter.z or 0
-        )
+    if data.OriginalCenter then
+        if type(data.OriginalCenter) == "Vector" then
+            -- Déjà un Vector, rien à faire
+        elseif type(data.OriginalCenter) == "table" then
+            data.OriginalCenter = Vector(
+                tonumber(data.OriginalCenter.x) or 0,
+                tonumber(data.OriginalCenter.y) or 0,
+                tonumber(data.OriginalCenter.z) or 0
+            )
+        elseif type(data.OriginalCenter) == "string" then
+            -- util.TableToJSON sérialise les Vectors comme strings "x y z"
+            local parts = string.Explode(" ", data.OriginalCenter)
+            data.OriginalCenter = Vector(
+                tonumber(parts[1]) or 0,
+                tonumber(parts[2]) or 0,
+                tonumber(parts[3]) or 0
+            )
+        else
+            data.OriginalCenter = Vector(0, 0, 0)
+        end
     end
 
     for key, entData in pairs(data.Entities) do
         if type(entData) ~= "table" then continue end
-        if entData.Pos and type(entData.Pos) == "table" then
-            entData.Pos = Vector(entData.Pos.x or 0, entData.Pos.y or 0, entData.Pos.z or 0)
+        -- Rebuild Pos
+        if entData.Pos then
+            if type(entData.Pos) == "string" then
+                local p = string.Explode(" ", entData.Pos)
+                entData.Pos = Vector(tonumber(p[1]) or 0, tonumber(p[2]) or 0, tonumber(p[3]) or 0)
+            elseif type(entData.Pos) == "table" then
+                entData.Pos = Vector(tonumber(entData.Pos.x) or 0, tonumber(entData.Pos.y) or 0, tonumber(entData.Pos.z) or 0)
+            end
         end
-        if entData.Ang and type(entData.Ang) == "table" then
-            entData.Ang = Angle(entData.Ang.p or 0, entData.Ang.y or 0, entData.Ang.r or 0)
+        -- Rebuild Ang
+        if entData.Ang then
+            if type(entData.Ang) == "string" then
+                local a = string.Explode(" ", entData.Ang)
+                entData.Ang = Angle(tonumber(a[1]) or 0, tonumber(a[2]) or 0, tonumber(a[3]) or 0)
+            elseif type(entData.Ang) == "table" then
+                entData.Ang = Angle(tonumber(entData.Ang.p) or 0, tonumber(entData.Ang.y) or 0, tonumber(entData.Ang.r) or 0)
+            end
         end
     end
 
@@ -280,6 +306,8 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
 
     -- Reconstruire les Vector/Angle après validation
     local dupeData = RebuildVectors(blueprint.data)
+
+    print("[Construction] OriginalCenter after rebuild: " .. tostring(dupeData.OriginalCenter) .. " type: " .. type(dupeData.OriginalCenter))
 
     -- Préparer la preview pour le client (données légères)
     local previewData = {
