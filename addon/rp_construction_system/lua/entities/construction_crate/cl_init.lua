@@ -6,6 +6,9 @@
 include("shared.lua")
 
 function ENT:Draw()
+    -- Invisible quand chargée sur un véhicule
+    if self:GetNWBool("IsLoaded", false) then return end
+
     self:DrawModel()
 
     -- Position: sur le dessus de la caisse, collé

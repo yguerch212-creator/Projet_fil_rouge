@@ -28,6 +28,7 @@ end
 
 hook.Add("PhysgunPickup", "Construction_CratePhysgun", function(ply, ent)
     if ent:GetClass() ~= "construction_crate" then return end
+    if ent:GetNWBool("IsLoaded", false) then return false end
     local owner = ent:CPPIGetOwner()
     if IsValid(owner) and owner == ply then return true end
     if ply:IsAdmin() then return true end
@@ -43,7 +44,9 @@ hook.Add("CanTool", "Construction_CrateTool", function(ply, tr, tool)
 end)
 
 hook.Add("GravGunPickupAllowed", "Construction_CrateGravgun", function(ply, ent)
-    if ent:GetClass() == "construction_crate" then return true end
+    if ent:GetClass() ~= "construction_crate" then return end
+    if ent:GetNWBool("IsLoaded", false) then return false end
+    return true
 end)
 
 ---------------------------------------------------------------------------
@@ -83,6 +86,9 @@ function ENT:Use(activator, caller)
     if self.LastUse and self.LastUse > CurTime() then return end
     self.LastUse = CurTime() + 0.5
 
+    -- Pas d'interaction quand chargée sur un véhicule
+    if self:GetNWBool("IsLoaded", false) then return end
+
     -- Vérification du job
     if not self:CanPlayerUse(activator) then
         DarkRP.notify(activator, 1, 3, "Votre metier n'a pas acces aux caisses de materiaux !")
@@ -97,6 +103,75 @@ function ENT:Use(activator, caller)
     activator.ActiveCrate = self
     activator:SetNWEntity("ActiveCrate", self)
     DarkRP.notify(activator, 0, 4, "Caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
+end
+
+---------------------------------------------------------------------------
+-- CHARGEMENT / DÉCHARGEMENT VÉHICULE
+---------------------------------------------------------------------------
+
+function ENT:LoadOntoVehicle(vehicle)
+    if not IsValid(vehicle) then return false end
+    if self.LoadedVehicle then return false end
+
+    self.LoadedVehicle = vehicle
+    self:SetNWEntity("LoadedVehicle", vehicle)
+    self:SetNWBool("IsLoaded", true)
+
+    -- Invisible + no-collide
+    self:SetNoDraw(true)
+    self:SetSolid(SOLID_NONE)
+    self:SetMoveType(MOVETYPE_NONE)
+    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+
+    -- Attacher au véhicule
+    self:SetParent(vehicle)
+    self:SetLocalPos(Vector(0, 0, 0))
+    self:SetLocalAngles(Angle(0, 0, 0))
+
+    -- Désactiver la physique
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(false)
+    end
+
+    return true
+end
+
+function ENT:UnloadFromVehicle()
+    if not self.LoadedVehicle then return false end
+
+    local vehicle = self.LoadedVehicle
+    self.LoadedVehicle = nil
+    self:SetNWEntity("LoadedVehicle", NULL)
+    self:SetNWBool("IsLoaded", false)
+
+    -- Détacher
+    self:SetParent(nil)
+
+    -- Réapparaître à côté du véhicule (ou du joueur)
+    local dropPos
+    if IsValid(vehicle) then
+        dropPos = vehicle:GetPos() + vehicle:GetRight() * 100 + Vector(0, 0, 30)
+    else
+        dropPos = self:GetPos() + Vector(0, 0, 50)
+    end
+    self:SetPos(dropPos)
+    self:SetAngles(Angle(0, 0, 0))
+
+    -- Visible + solide
+    self:SetNoDraw(false)
+    self:SetSolid(SOLID_VPHYSICS)
+    self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetCollisionGroup(COLLISION_GROUP_NONE)
+
+    -- Réactiver la physique
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(true)
+        phys:Wake()
+    end
+
+    return true
 end
 
 function ENT:OnRemove()
