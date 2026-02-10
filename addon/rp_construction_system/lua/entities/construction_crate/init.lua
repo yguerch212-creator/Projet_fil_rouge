@@ -115,14 +115,8 @@ function ENT:LoadOntoVehicle(vehicle)
 
     self.LoadedVehicle = vehicle
 
-    -- Désactiver la physique AVANT le parent
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then
-        phys:EnableMotion(false)
-        phys:Sleep()
-    end
-
-    -- No-collide AVANT le parent
+    -- Détruire complètement la physique (évite le ghost physics de SetParent)
+    self:PhysicsDestroy()
     self:SetSolid(SOLID_NONE)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
@@ -178,17 +172,18 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    -- Visible (déjà visible, mais au cas où)
+    -- Visible
     self:SetNoDraw(false)
 
-    -- Solide
+    -- Recréer la physique complète
+    self:PhysicsInit(SOLID_VPHYSICS)
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
 
-    -- Réactiver la physique
     local phys = self:GetPhysicsObject()
     if IsValid(phys) then
+        phys:SetMass(50)
         phys:EnableMotion(true)
         phys:Wake()
     end

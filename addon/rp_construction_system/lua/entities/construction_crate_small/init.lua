@@ -79,12 +79,7 @@ function ENT:LoadOntoVehicle(vehicle)
 
     self.LoadedVehicle = vehicle
 
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then
-        phys:EnableMotion(false)
-        phys:Sleep()
-    end
-
+    self:PhysicsDestroy()
     self:SetSolid(SOLID_NONE)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
@@ -130,12 +125,14 @@ function ENT:UnloadFromVehicle()
 
     self:SetNoDraw(false)
 
+    self:PhysicsInit(SOLID_VPHYSICS)
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
 
     local phys = self:GetPhysicsObject()
     if IsValid(phys) then
+        phys:SetMass(25)
         phys:EnableMotion(true)
         phys:Wake()
     end
