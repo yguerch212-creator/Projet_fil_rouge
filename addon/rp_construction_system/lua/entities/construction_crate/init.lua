@@ -110,42 +110,45 @@ end
 ---------------------------------------------------------------------------
 
 function ENT:LoadOntoVehicle(vehicle)
-    if not IsValid(vehicle) then return false end
-    if self.LoadedVehicle then return false end
+    if not IsValid(vehicle) then print("[Construction] LoadOntoVehicle: vehicle invalid") return false end
+    if self.LoadedVehicle then print("[Construction] LoadOntoVehicle: already loaded") return false end
 
-    self.LoadedVehicle = vehicle
-
-    -- Détruire complètement la physique (évite le ghost physics de SetParent)
-    self:PhysicsDestroy()
-    self:SetSolid(SOLID_NONE)
-    self:SetMoveType(MOVETYPE_NONE)
-    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
-
-    -- Attacher au véhicule avec placement adapté au modèle
-    self:SetParent(vehicle)
-
-    -- Placement : centré dans le cargo du camion, juste sous le toit
+    -- Lire les dimensions AVANT de toucher à la physique
     local vMins, vMaxs = vehicle:OBBMins(), vehicle:OBBMaxs()
     local cMins, cMaxs = self:OBBMins(), self:OBBMaxs()
     local crateH = cMaxs.z - cMins.z
 
-    -- X: centre du cargo (arrière du véhicule, ~60% vers l'arrière)
-    local cargoX = vMins.x * 0.6
-    -- Y: centré
-    local cargoY = 0
-    -- Z: juste sous le toit (toit - hauteur caisse)
-    local cargoZ = vMaxs.z - crateH - 5
+    -- Calculer le placement dans le cargo
+    local cargoX = vMins.x * 0.6  -- arrière du véhicule
+    local cargoY = 0               -- centré
+    local cargoZ = vMaxs.z - crateH - 5  -- juste sous le toit
 
+    print("[Construction] LoadOntoVehicle: vOBB=(" .. tostring(vMins) .. " / " .. tostring(vMaxs) .. ")")
+    print("[Construction] LoadOntoVehicle: crateH=" .. crateH .. " pos=" .. cargoX .. "," .. cargoY .. "," .. cargoZ)
+
+    self.LoadedVehicle = vehicle
+
+    -- 1. Détruire la physique
+    self:PhysicsDestroy()
+
+    -- 2. No-collide
+    self:SetSolid(SOLID_NONE)
+    self:SetMoveType(MOVETYPE_NONE)
+    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+
+    -- 3. Attacher au véhicule
+    self:SetParent(vehicle)
+
+    -- 4. Placer (APRÈS SetParent)
     self:SetLocalPos(Vector(cargoX, cargoY, cargoZ))
     self:SetLocalAngles(Angle(0, 0, 0))
 
-    -- Visible mais sans collision (la caisse reste visible dans le camion)
-
-    -- NW vars en dernier (propagation client)
+    -- 5. NW vars
     self:SetNWBool("IsLoaded", true)
     self:SetNWEntity("LoadedVehicle", vehicle)
 
-    print("[Construction] Caisse " .. tostring(self) .. " chargee sur " .. tostring(vehicle))
+    -- Vérification
+    print("[Construction] LOADED: Solid=" .. self:GetSolid() .. " CollGroup=" .. self:GetCollisionGroup() .. " LocalPos=" .. tostring(self:GetLocalPos()) .. " HasPhys=" .. tostring(IsValid(self:GetPhysicsObject())))
     return true
 end
 
