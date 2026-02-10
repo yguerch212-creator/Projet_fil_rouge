@@ -24,7 +24,11 @@
 
 1. Téléchargez ou clonez le dépôt
 2. Copiez le dossier `rp_construction_system/` dans `garrysmod/addons/`
-3. Redémarrez le serveur
+3. **Si vous n'utilisez pas MySQL** (cas le plus courant) :
+   - Supprimez `lua/rp_construction/sv_database.lua`
+   - Supprimez `sql/schema.sql`
+   - La section `DB` dans `sh_config.lua` sera ignorée
+4. Redémarrez le serveur
 
 ### Vérification
 
@@ -39,26 +43,20 @@ En console serveur, vous devriez voir :
 
 ## Configuration DarkRP
 
-### 1. Job Constructeur
+### 1. Attribuer le SWEP à un job
 
-Dans `darkrpmodification/lua/darkrp_customthings/jobs.lua` :
+Le SWEP `weapon_construction` peut être attribué à **n'importe quel job DarkRP existant**. Ajoutez `"weapon_construction"` dans la table `weapons` du job souhaité :
 
 ```lua
-TEAM_BUILDER = DarkRP.createJob("Constructeur", {
-    color = Color(0, 153, 204),
-    model = "models/player/hostage/hostage_04.mdl",
-    description = "Construisez des structures pour la ville.",
-    weapons = {"weapon_construction"},  -- SWEP distribué automatiquement
-    command = "constructeur",
-    max = 3,
-    salary = 65,
-    admin = 0,
-    vote = false,
-    category = "Citoyens",
+-- Exemple dans darkrpmodification/lua/darkrp_customthings/jobs.lua
+TEAM_ARCHITECT = DarkRP.createJob("Architecte", {
+    -- ... vos paramètres existants ...
+    weapons = {"weapon_construction"},  -- Ajouter cette ligne
+    -- ...
 })
 ```
 
-> **Important** : La ligne `weapons = {"weapon_construction"}` donne le SWEP au job. L'addon détecte automatiquement `TEAM_BUILDER` pour les permissions.
+> **Note** : Si `SWEPJobs` dans `sh_config.lua` est `nil`, l'addon détecte automatiquement le premier job possédant `weapon_construction`.
 
 ### 2. Entités F4 (caisses)
 
@@ -265,7 +263,7 @@ docker commit gmod-server projetfilrouge/gmod-server:stable
 | Modèles de caisses invisibles | Installez le content pack WW2 (Workshop 3008026539) |
 | `docker restart` ne prend pas les changements | Utilisez `docker compose up -d` à la place |
 | Client ne voit pas les changements Lua | Le joueur doit se reconnecter (disconnect + retry) |
-| Caisse ne se charge pas dans le véhicule | Utilisez le physgun pour coller la caisse au véhicule simfphys |
+| Caisse ne se charge pas dans le véhicule | Posez la caisse près du véhicule, visez avec le SWEP et appuyez R |
 
 ---
 

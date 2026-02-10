@@ -61,8 +61,8 @@ Système de construction collaborative pour serveurs Garry's Mod DarkRP. Un Cons
 Les grosses caisses sont transportables en véhicule simfphys.
 
 ### Véhicules simfphys
-- **Chargement** — Physgun la caisse près du véhicule, le système auto-détecte via Think loop
-- **Déchargement** — Visez le véhicule avec le SWEP et appuyez R
+- **Chargement** — Équipez le SWEP, visez le véhicule avec une caisse à proximité, appuyez **R**
+- **Déchargement** — Visez le véhicule avec le SWEP et appuyez **R**
 - **Offsets calibrés** — Positions de cargo par modèle (WW2 Opel, CCKW 6x6, etc.)
 - **2 caisses max** par véhicule (décalées gauche/droite)
 - **Support LVS** — Documenté et détectable, offsets par défaut basés sur les bounds du modèle
@@ -85,35 +85,40 @@ Les grosses caisses sont transportables en véhicule simfphys.
 ### Manuel
 1. Téléchargez/clonez ce dépôt
 2. Copiez le dossier `rp_construction_system` dans `garrysmod/addons/`
-3. Redémarrez le serveur
-4. Assurez-vous que les joueurs ont le content pack pour les modèles de caisses
+3. **Si vous n'utilisez pas MySQL** (recommandé pour la plupart des serveurs) :
+   - Supprimez `lua/rp_construction/sv_database.lua` (module MySQLOO)
+   - Supprimez `sql/schema.sql` (schéma DB)
+   - La section `DB` dans `sh_config.lua` sera simplement ignorée
+4. Redémarrez le serveur
+5. Assurez-vous que les joueurs ont le content pack pour les modèles de caisses
 
 ---
 
 ## ⚙️ Configuration DarkRP
 
-### Job Constructeur
+### Attribuer le SWEP à un job
 
-Ajoutez dans `darkrpmodification/lua/darkrp_customthings/jobs.lua` :
+Le SWEP `weapon_construction` peut être attribué à **n'importe quel job DarkRP existant**. Ajoutez simplement `"weapon_construction"` dans la table `weapons` du job souhaité :
 
 ```lua
-TEAM_BUILDER = DarkRP.createJob("Constructeur", {
-    color = Color(0, 153, 204),
-    model = "models/player/hostage/hostage_04.mdl",
-    description = "Construisez des structures pour la ville.",
-    weapons = {"weapon_construction"},
-    command = "constructeur",
-    max = 3,
-    salary = 65,
-    admin = 0,
-    vote = false,
-    category = "Citoyens",
+-- Exemple : l'ajouter à un job existant (jobs.lua)
+TEAM_ARCHITECT = DarkRP.createJob("Architecte", {
+    -- ... vos paramètres existants ...
+    weapons = {"weapon_construction"},  -- Ajouter cette ligne
+    -- ...
 })
 ```
 
-> **Note** : `TEAM_BUILDER` est le Team ID 10 par défaut. Adaptez selon votre serveur.
+Pour attribuer le SWEP à **plusieurs jobs**, ajoutez-le dans chaque définition de job, puis configurez `sh_config.lua` :
 
-### Entités F4
+```lua
+-- sh_config.lua
+ConstructionSystem.Config.SWEPJobs = {TEAM_ARCHITECT, TEAM_ENGINEER}
+```
+
+> **Note** : Si `SWEPJobs` est `nil`, l'addon détecte automatiquement le premier job qui possède `weapon_construction` dans ses armes.
+
+### Caisses de matériaux (entités F4)
 
 Ajoutez dans `darkrpmodification/lua/darkrp_customthings/entities.lua` :
 
@@ -124,6 +129,7 @@ DarkRP.createEntity("Caisse de Matériaux", {
     price = 500,
     max = 2,
     cmd = "buycrate",
+    allowed = {TEAM_ARCHITECT},  -- Restreindre aux jobs autorisés
     category = "Construction",
 })
 
@@ -133,9 +139,12 @@ DarkRP.createEntity("Petite Caisse", {
     price = 250,
     max = 3,
     cmd = "buysmallcrate",
+    allowed = {TEAM_ARCHITECT},  -- Même restriction
     category = "Construction",
 })
 ```
+
+Le champ `allowed` contrôle quels jobs voient les caisses dans le menu F4. Omettez-le pour les rendre disponibles à tous.
 
 ---
 
@@ -243,9 +252,10 @@ Tout se configure dans `lua/rp_construction/sh_config.lua` :
 ### Transport en véhicule
 
 1. Spawner un véhicule simfphys (ex: Opel WW2, CCKW 6x6)
-2. Physgun la caisse près du véhicule → chargement automatique
-3. Conduisez jusqu'au chantier
-4. Visez le véhicule avec le SWEP et appuyez **R** pour décharger
+2. Posez une caisse à proximité du véhicule
+3. Équipez le SWEP, visez le véhicule et appuyez **R** pour charger
+4. Conduisez jusqu'au chantier
+5. Visez le véhicule avec le SWEP et appuyez **R** pour décharger
 
 ### Stockage des blueprints
 
@@ -415,7 +425,6 @@ Configurez les identifiants dans `sh_config.lua` → section `DB`.
 ## 🙏 Crédits
 
 - **Décodeur AdvDupe2** — Basé sur [wiremod/advdupe2](https://github.com/wiremod/advdupe2) (Apache 2.0)
-- **Modèles WW2** — Caisses et véhicules issus de packs Workshop WW2 (content pack [3008026539](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539))
 - **Viewmodel** — `v_fortnite_builder.mdl` (Workshop) / `c_slam.mdl` (dev fallback)
 - **Panel de placement** — Inspiré de l'interface AdvDupe2
 
@@ -476,8 +485,8 @@ Collaborative construction system for Garry's Mod DarkRP servers. A Builder sele
 Large crates are transportable in simfphys vehicles.
 
 ### simfphys Vehicles
-- **Loading** — Physgun the crate near the vehicle, system auto-detects via Think loop
-- **Unloading** — Aim at vehicle with SWEP and press R
+- **Loading** — Equip the SWEP, aim at the vehicle with a crate nearby, press **R**
+- **Unloading** — Aim at vehicle with SWEP and press **R**
 - **Calibrated offsets** — Cargo positions per vehicle model (WW2 Opel, CCKW 6x6, etc.)
 - **LVS support** — Documented and detectable, default offsets based on model bounds
 
@@ -499,33 +508,38 @@ Large crates are transportable in simfphys vehicles.
 ### Manual
 1. Download/clone this repository
 2. Copy the `rp_construction_system` folder to `garrysmod/addons/`
-3. Restart the server
-4. Ensure players have the content pack for crate models
+3. **If you don't use MySQL** (recommended for most servers):
+   - Delete `lua/rp_construction/sv_database.lua` (MySQLOO module)
+   - Delete `sql/schema.sql` (DB schema)
+   - The `DB` section in `sh_config.lua` will simply be ignored
+4. Restart the server
+5. Ensure players have the content pack for crate models
 
 ---
 
 ## ⚙️ DarkRP Configuration
 
-### Builder Job
+### Assign the SWEP to a job
 
-Add to `darkrpmodification/lua/darkrp_customthings/jobs.lua`:
+Add `"weapon_construction"` to the `weapons` table of any existing DarkRP job:
 
 ```lua
-TEAM_BUILDER = DarkRP.createJob("Builder", {
-    color = Color(0, 153, 204),
-    model = "models/player/hostage/hostage_04.mdl",
-    description = "Build structures for the city.",
-    weapons = {"weapon_construction"},
-    command = "builder",
-    max = 3,
-    salary = 65,
-    admin = 0,
-    vote = false,
-    category = "Citizens",
+-- Example: add to an existing job (jobs.lua)
+TEAM_ARCHITECT = DarkRP.createJob("Architect", {
+    -- ... your existing settings ...
+    weapons = {"weapon_construction"},  -- Add this line
+    -- ...
 })
 ```
 
-### F4 Entities
+For **multiple jobs**, add it to each job definition and configure `sh_config.lua`:
+
+```lua
+-- sh_config.lua
+ConstructionSystem.Config.SWEPJobs = {TEAM_ARCHITECT, TEAM_ENGINEER}
+```
+
+### Material Crates (F4 entities)
 
 Add to `darkrpmodification/lua/darkrp_customthings/entities.lua`:
 
@@ -536,7 +550,7 @@ DarkRP.createEntity("Material Crate", {
     price = 500,
     max = 2,
     cmd = "buycrate",
-    allowed = {TEAM_BUILDER},
+    allowed = {TEAM_ARCHITECT},  -- Restrict to allowed jobs
     category = "Construction",
 })
 
@@ -546,10 +560,12 @@ DarkRP.createEntity("Small Crate", {
     price = 250,
     max = 3,
     cmd = "buysmallcrate",
-    allowed = {TEAM_BUILDER},
+    allowed = {TEAM_ARCHITECT},  -- Same restriction
     category = "Construction",
 })
 ```
+
+The `allowed` field controls which jobs see crates in the F4 menu. Omit it to make them available to everyone.
 
 ---
 
@@ -598,9 +614,10 @@ All settings in `lua/rp_construction/sh_config.lua`:
 
 ### Vehicle Transport
 1. Spawn a simfphys vehicle (e.g. WW2 Opel, CCKW 6x6)
-2. Physgun the crate near the vehicle → auto-loads
-3. Drive to construction site
-4. Aim at vehicle with SWEP and press **R** to unload
+2. Place a crate near the vehicle
+3. Equip the SWEP, aim at the vehicle and press **R** to load
+4. Drive to construction site
+5. Aim at vehicle with SWEP and press **R** to unload
 
 ---
 
@@ -668,7 +685,6 @@ Custom offsets can be added for any vehicle model.
 ## 🙏 Credits
 
 - **AdvDupe2 decoder** — Based on [wiremod/advdupe2](https://github.com/wiremod/advdupe2) (Apache 2.0)
-- **WW2 models** — Crates and vehicles from WW2 Workshop packs (content pack [3008026539](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539))
 - **Viewmodel** — `v_fortnite_builder.mdl` (Workshop) / `c_slam.mdl` (dev fallback)
 - **Placement panel** — Inspired by AdvDupe2 interface
 

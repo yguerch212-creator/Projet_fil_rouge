@@ -108,12 +108,10 @@ Les grosses caisses (et les petites) peuvent être chargées dans des véhicules
 ### Charger une caisse
 
 1. Spawner un véhicule simfphys (Opel Blitz, CCKW 6x6, etc.)
-2. Spawner une caisse de matériaux à proximité
-3. Avec le **physgun**, attrapez la caisse et posez-la **sur/près du véhicule**
-4. Le système détecte automatiquement le parenting et :
-   - Place la caisse au bon endroit dans le cargo
-   - Retire les collisions
-   - Le 3D2D de la caisse disparaît
+2. Posez une caisse de matériaux à proximité du véhicule
+3. Équipez le **SWEP Construction**
+4. **Visez le véhicule** et appuyez **R**
+5. La caisse se charge automatiquement à l'arrière du véhicule
 
 ### Décharger une caisse
 
@@ -182,7 +180,7 @@ R: Seuls les `prop_physics` dont vous êtes propriétaire (CPPI) sont sélection
 R: Vous devez d'abord activer une caisse (E sur la caisse), puis viser le fantôme et appuyer E.
 
 **Q: La caisse ne se charge pas dans le véhicule**
-R: Utilisez le physgun pour coller la caisse au véhicule. Le système détecte automatiquement le parenting.
+R: Posez la caisse près du véhicule, équipez le SWEP Construction, visez le véhicule et appuyez R.
 
 **Q: Où sont stockés mes blueprints ?**
 R: Localement dans `garrysmod/data/construction_blueprints/`. Ils ne sont jamais envoyés au serveur de manière permanente.

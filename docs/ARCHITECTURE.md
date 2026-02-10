@@ -157,14 +157,14 @@ ghost:Materialize() → spawn prop_physics réel, remove ghost
 ### 4. Véhicule (chargement/déchargement)
 
 ```
-CHARGEMENT (automatique via Think):
-Joueur physgun caisse sur véhicule → SetParent() par engine
+CHARGEMENT (touche R via net message):
+Client SWEP:Reload() → net "Construction_VehicleReload"
     ↓
-construction_crate:Think() (toutes les 0.5s)
+Serveur: trace → trouve véhicule → cherche caisse à proximité
     ↓
-Détecte parent = gmod_sent_vehicle_fphysics_base + pas loaded
+LoadCrate(): SetParent(vehicle), phys:EnableMotion(false), SOLID_NONE
     ↓
-LoadCrate(): phys:EnableMotion(false), SOLID_NONE, SetLocalPos(offset)
+SetLocalPos(offset calibré par modèle)
     ↓
 NWBool "IsLoaded" = true → client cache 3D2D
 

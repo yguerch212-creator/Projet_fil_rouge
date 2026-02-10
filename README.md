@@ -164,7 +164,7 @@ services:
 - **Ghost entities** — Prévisualisation holographique avant construction
 - **Construction collaborative** — Tout joueur avec une caisse peut matérialiser les fantômes
 - **Caisses de matériaux** — 2 tailles (50 et 15 matériaux), achetables au F4
-- **Véhicules simfphys** — Chargement/déchargement de caisses via physgun parent + Think auto-detect
+- **Véhicules simfphys** — Chargement/déchargement de caisses via touche R
 - **Offsets calibrés** — Positions de cargo par modèle de véhicule (WW2 Opel, CCKW 6x6, etc.)
 - **Net message `Construction_VehicleReload`** — Touche R pour décharger une caisse du véhicule visé
 - **Interface moderne** — UI dark theme avec sidebar, navigation par dossiers, badges AD2, breadcrumb
@@ -461,20 +461,20 @@ ProjetFilRouge/
 │   ├── addons/                      #    Addons montés (copie de dev)
 │   │   ├── rp_construction_system/  #    Addon (sync via rsync)
 │   │   └── darkrpmodification/      #    Config DarkRP (jobs, entities)
-│   ├── gamemodes/darkrp/            #    Gamemode DarkRP
 │   ├── lua-bin/                     #    MySQLOO binaires 64-bit
 │   ├── mysql-init/                  #    Script init SQL
 │   └── server-config/               #    server.cfg
-├── docs/                            # 📚 Documentation
+├── docs/                            # 📚 Documentation technique
 │   ├── ARCHITECTURE.md              #    Architecture détaillée
 │   ├── GUIDE_INSTALLATION.md        #    Guide admin serveur
 │   ├── GUIDE_UTILISATEUR.md         #    Guide joueur
 │   ├── DOCKER_IMAGES.md             #    Gestion images Docker
 │   └── JOURNAL_DEV.md               #    Journal de développement
-├── schemas/                         #    Schémas et diagrammes
-├── screenshots/                     #    Captures d'écran
-├── scripts/                         #    Scripts utilitaires
-├── livrables/                       #    Documents de rendu
+├── rendu/                           # 📝 Rendus académiques (Projet Fil Rouge)
+│   ├── dat/                         #    Dossier d'Architecture Technique
+│   ├── amelioration/                #    Compte-rendu d'amélioration
+│   ├── backup/                      #    Plan de sauvegarde
+│   └── cdc/                         #    Cahier des charges
 └── README.md                        #    Ce fichier
 ```
 
@@ -538,7 +538,5 @@ Ce Projet Fil Rouge m'a permis de couvrir un spectre technique large, de l'infra
 ### Perspectives
 - 🔜 Publication sur le Steam Workshop
 - 🔜 Système de coûts configurable (matériaux par prop)
-- 🔜 Marketplace de blueprints (partage entre joueurs via base de données)
 - 🔜 Support étendu des véhicules LVS
-- 🔜 Panel web d'administration (statistiques, modération)
-- 🔜 Tests automatisés (CI/CD GitLab)
+- 🔜 Système de partage de blueprints entre joueurs
