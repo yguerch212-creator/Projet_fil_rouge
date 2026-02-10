@@ -132,9 +132,11 @@ function ENT:LoadOntoVehicle(vehicle)
     self:SetLocalPos(Vector(0, 0, 0))
     self:SetLocalAngles(Angle(0, 0, 0))
 
-    -- Invisible : NoDraw + AddEffects EF_NODRAW (double sécurité)
+    -- Invisible : triple sécurité
     self:SetNoDraw(true)
     self:AddEffects(EF_NODRAW)
+    self:SetRenderMode(RENDERMODE_NONE)
+    self:SetColor(Color(0, 0, 0, 0))
 
     -- NW vars en dernier (propagation client)
     self:SetNWBool("IsLoaded", true)
@@ -167,9 +169,11 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    -- Visible : retirer EF_NODRAW + SetNoDraw false
+    -- Visible : retirer tout
     self:RemoveEffects(EF_NODRAW)
     self:SetNoDraw(false)
+    self:SetRenderMode(RENDERMODE_NORMAL)
+    self:SetColor(Color(255, 255, 255, 255))
 
     -- Solide
     self:SetSolid(SOLID_VPHYSICS)

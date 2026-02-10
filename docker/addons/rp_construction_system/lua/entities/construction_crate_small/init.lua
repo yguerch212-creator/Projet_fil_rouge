@@ -95,6 +95,8 @@ function ENT:LoadOntoVehicle(vehicle)
 
     self:SetNoDraw(true)
     self:AddEffects(EF_NODRAW)
+    self:SetRenderMode(RENDERMODE_NONE)
+    self:SetColor(Color(0, 0, 0, 0))
 
     self:SetNWBool("IsLoaded", true)
     self:SetNWEntity("LoadedVehicle", vehicle)
@@ -124,6 +126,8 @@ function ENT:UnloadFromVehicle()
 
     self:RemoveEffects(EF_NODRAW)
     self:SetNoDraw(false)
+    self:SetRenderMode(RENDERMODE_NORMAL)
+    self:SetColor(Color(255, 255, 255, 255))
 
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
