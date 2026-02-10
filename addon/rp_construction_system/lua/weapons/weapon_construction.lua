@@ -95,17 +95,19 @@ function SWEP:Reload()
     local tr = ply:GetEyeTrace()
     local hitEnt = tr.Entity
 
+    print("[Construction] Reload pressed. HitEnt:", hitEnt, "Class:", IsValid(hitEnt) and hitEnt:GetClass() or "none")
+
     -- Trouver le véhicule simfphys : l'entité visée OU son parent (sièges, etc.)
     local vehicle = nil
     if IsValid(hitEnt) then
         local check = hitEnt
-        for i = 1, 5 do -- remonter max 5 niveaux de parents
+        for i = 1, 5 do
             if not IsValid(check) then break end
+            print("[Construction]   Check parent " .. i .. ":", check:GetClass())
             if check:GetClass() == "gmod_sent_vehicle_fphysics_base" then
                 vehicle = check
                 break
             end
-            -- Vérifier aussi si c'est un véhicule Source lié à simfphys
             if check.IsSimfphyscar or check.simfphysdata then
                 vehicle = check
                 break
@@ -113,6 +115,8 @@ function SWEP:Reload()
             check = check:GetParent()
         end
     end
+    
+    print("[Construction] Vehicle found:", vehicle, "TargetCrate:", "checking...")
 
     -- Si on vise une caisse, chercher un véhicule à proximité
     local targetCrate = nil
