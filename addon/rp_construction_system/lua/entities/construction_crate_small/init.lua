@@ -80,6 +80,7 @@ function ENT:LoadOntoVehicle(vehicle)
     self.LoadedVehicle = vehicle
     self._OrigModel = self:GetModel()
 
+    self:SetParent(nil)
     self:PhysicsDestroy()
     self:SetSolid(SOLID_NONE)
     self:SetMoveType(MOVETYPE_NONE)

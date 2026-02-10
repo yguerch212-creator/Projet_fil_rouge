@@ -128,11 +128,8 @@ function ENT:LoadOntoVehicle(vehicle)
     -- Sauvegarder le modèle original pour le respawn
     self._OrigModel = self:GetModel()
 
-    -- 1. Détacher si déjà parenté à autre chose
-    local curParent = self:GetParent()
-    if IsValid(curParent) and curParent ~= vehicle then
-        self:SetParent(nil)
-    end
+    -- 1. Toujours détacher d'abord (reset le lien physgun)
+    self:SetParent(nil)
 
     -- 2. Détruire la physique
     self:PhysicsDestroy()
@@ -142,10 +139,8 @@ function ENT:LoadOntoVehicle(vehicle)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 
-    -- 4. Attacher au véhicule (si pas déjà)
-    if self:GetParent() ~= vehicle then
-        self:SetParent(vehicle)
-    end
+    -- 4. Ré-attacher proprement
+    self:SetParent(vehicle)
 
     -- 5. Placement par modèle de véhicule
     local vModel = vehicle:GetModel() or ""
