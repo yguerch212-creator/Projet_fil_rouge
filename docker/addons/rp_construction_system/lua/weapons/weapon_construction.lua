@@ -84,8 +84,14 @@ function SWEP:SecondaryAttack()
 end
 
 -- Reload (R): Charger/décharger caisse sur véhicule OU clear sélection
+-- NOTE: SWEP:Reload() n'est PAS appelé côté serveur avec ClipSize=-1
+-- On utilise un hook KeyPress à la place (voir en bas du fichier)
 function SWEP:Reload()
-    if CLIENT then return end
+    -- Client-side only avec ClipSize=-1, ne fait rien
+end
+
+-- La vraie logique Reload, appelée par le hook KeyPress
+function SWEP:DoReload()
     local ply = self:GetOwner()
     if not IsValid(ply) then return end
 
@@ -204,4 +210,14 @@ if CLIENT then
 
         draw.SimpleText("LMB:Sel | RMB:Zone | R:Vehicule/Clear", "DermaDefault", boxX + boxW / 2, boxY + 40, Color(130, 130, 130), TEXT_ALIGN_CENTER)
     end
+end
+
+-- Hook serveur pour capturer la touche R (Reload n'est pas appelé serveur avec ClipSize=-1)
+if SERVER then
+    hook.Add("KeyPress", "Construction_ReloadKey", function(ply, key)
+        if key ~= IN_RELOAD then return end
+        local wep = ply:GetActiveWeapon()
+        if not IsValid(wep) or wep:GetClass() ~= "weapon_construction" then return end
+        wep:DoReload()
+    end)
 end
