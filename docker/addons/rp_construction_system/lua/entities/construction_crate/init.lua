@@ -201,6 +201,39 @@ function ENT:UnloadFromVehicle()
     return true
 end
 
+-- Think: détecte automatiquement quand la caisse est parentée à un véhicule
+function ENT:Think()
+    local parent = self:GetParent()
+    
+    -- Si parentée à un simfphys et pas encore "loaded" → charger
+    if IsValid(parent) and parent:GetClass() == "gmod_sent_vehicle_fphysics_base" and not self.LoadedVehicle then
+        self:LoadOntoVehicle(parent)
+    end
+    
+    -- Si le véhicule parent est supprimé → décharger
+    if self.LoadedVehicle and not IsValid(self.LoadedVehicle) then
+        self.LoadedVehicle = nil
+        self:SetNWBool("IsLoaded", false)
+        self:SetNWEntity("LoadedVehicle", NULL)
+        self:SetParent(nil)
+        self:SetModel(self._OrigModel or ConstructionSystem.Config.CrateModel)
+        self:PhysicsInit(SOLID_VPHYSICS)
+        self:SetMoveType(MOVETYPE_VPHYSICS)
+        self:SetSolid(SOLID_VPHYSICS)
+        self:SetCollisionGroup(COLLISION_GROUP_NONE)
+        self:SetNoDraw(false)
+        local phys = self:GetPhysicsObject()
+        if IsValid(phys) then
+            phys:SetMass(50)
+            phys:EnableMotion(true)
+            phys:Wake()
+        end
+    end
+    
+    self:NextThink(CurTime() + 0.5)
+    return true
+end
+
 function ENT:OnRemove()
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) and ply.ActiveCrate == self then
