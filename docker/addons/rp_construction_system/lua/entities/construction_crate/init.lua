@@ -4,11 +4,7 @@ AddCSLuaFile("cl_init.lua")
 include("shared.lua")
 
 function ENT:Initialize()
-    local preferred = ConstructionSystem.Config.CrateModelPreferred
-    local fallback = ConstructionSystem.Config.CrateModel
-    local model = util.IsValidModel(preferred) and preferred or fallback
-
-    self:SetModel(model)
+    self:SetModel(ConstructionSystem.Config.CrateModel)
     self:PhysicsInit(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetSolid(SOLID_VPHYSICS)
