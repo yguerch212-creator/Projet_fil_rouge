@@ -29,7 +29,7 @@ SWEP.DrawCrosshair = true
 
 SWEP.ViewModel = "models/weapons/v_fortnite_builder.mdl"
 SWEP.WorldModel = "models/weapons/w_fortnite_builder.mdl"
-SWEP.UseHands = true
+SWEP.UseHands = false
 SWEP.HoldType = "slam"
 
 function SWEP:Initialize()

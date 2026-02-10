@@ -1,0 +1,5 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/hts/ww2ns/props/dun/dun_wood_crate_01_col"
+	"$bumpmap" "models/hts/ww2ns/props/dun/dun_wood_crate_01_nml"
+}
