@@ -424,3 +424,256 @@ Configurez les identifiants dans `sh_config.lua` → section `DB`.
 ## 📄 License
 
 MIT
+
+---
+---
+
+# 🇬🇧 English Version
+
+# 🏗️ RP Construction System — Garry's Mod Addon
+
+**Version 2.2** | DarkRP Compatible | Standalone Workshop-Ready
+
+Collaborative construction system for Garry's Mod DarkRP servers. A Builder selects props, saves them as blueprints, places them as holographic ghosts, then any player can materialize those ghosts using material crates. Crates can be transported in simfphys vehicles for logistics.
+
+---
+
+## ✨ Features
+
+### Construction SWEP (`weapon_construction`)
+- **Left click** — Select/Deselect a prop (blue halo)
+- **Right click** — Radius selection (all props within a configurable radius)
+- **Shift + Right click** — Open blueprints menu
+- **R (Reload)** — Unload crate from targeted vehicle, or clear selection
+- **Integrated HUD** — Selected props counter, shortcuts displayed
+
+### Blueprints
+- **Unlimited local saves** — `.dat` files (JSON) in `data/construction_blueprints/`
+- **Subfolders** — Free organization, breadcrumb navigation
+- **AdvDupe2 import** — Copy your AD2 `.txt` files, auto-detected (orange **AD2** badge)
+- **Original position** — Option to place blueprint at original coordinates
+- **Embedded AD2 decoder** — No need for AdvDupe2 installed on server
+
+### Advanced Placement
+- **Holographic preview** — Blue translucent ghost entities
+- **Rotation** — Mouse wheel
+- **Height adjustment** — Shift + Mouse wheel
+- **Original position** — Checkbox in placement panel
+- **Confirm/Cancel** — LMB to confirm, RMB/Escape to cancel
+
+### Collaborative Construction
+- Ghosts are visible to **all players**
+- Anyone with an **active material crate** can materialize ghosts
+- Press **E** on crate to activate, then **E** on ghost to build
+- Each materialization consumes 1 material from the crate
+
+### Material Crates
+| Type | Model | Materials | F4 Price |
+|------|-------|-----------|----------|
+| Large crate | `dun_wood_crate_03.mdl` | 50 | Configurable (default: $1) |
+| Small crate | `r_crate_pak50mm_stacked.mdl` | 15 | Configurable (default: $1) |
+
+Large crates are transportable in simfphys vehicles.
+
+### simfphys Vehicles
+- **Loading** — Physgun the crate near the vehicle, system auto-detects via Think loop
+- **Unloading** — Aim at vehicle with SWEP and press R
+- **Calibrated offsets** — Cargo positions per vehicle model (WW2 Opel, CCKW 6x6, etc.)
+- **LVS support** — Documented and detectable, default offsets based on model bounds
+
+### Interface
+- **Modern dark theme** with sidebar
+- **Folder navigation** with breadcrumb
+- **Badges**: AD2 (AdvDupe2 import), prop count
+- **Tabs**: Blueprints, Save, Settings
+
+---
+
+## 📦 Installation
+
+### Workshop (recommended)
+1. Subscribe to the addon on Steam Workshop
+2. Add the Workshop ID to your server collection via `host_workshop_collection`
+3. Content (crate models) requires the [WW2 content pack](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539)
+
+### Manual
+1. Download/clone this repository
+2. Copy the `rp_construction_system` folder to `garrysmod/addons/`
+3. Restart the server
+4. Ensure players have the content pack for crate models
+
+---
+
+## ⚙️ DarkRP Configuration
+
+### Builder Job
+
+Add to `darkrpmodification/lua/darkrp_customthings/jobs.lua`:
+
+```lua
+TEAM_BUILDER = DarkRP.createJob("Builder", {
+    color = Color(0, 153, 204),
+    model = "models/player/hostage/hostage_04.mdl",
+    description = "Build structures for the city.",
+    weapons = {"weapon_construction"},
+    command = "builder",
+    max = 3,
+    salary = 65,
+    admin = 0,
+    vote = false,
+    category = "Citizens",
+})
+```
+
+### F4 Entities
+
+Add to `darkrpmodification/lua/darkrp_customthings/entities.lua`:
+
+```lua
+DarkRP.createEntity("Material Crate", {
+    ent = "construction_crate",
+    model = "models/hts/ww2ns/props/dun/dun_wood_crate_03.mdl",
+    price = 500,
+    max = 2,
+    cmd = "buycrate",
+    allowed = {TEAM_BUILDER},
+    category = "Construction",
+})
+
+DarkRP.createEntity("Small Crate", {
+    ent = "construction_crate_small",
+    model = "models/props_supplies/german/r_crate_pak50mm_stacked.mdl",
+    price = 250,
+    max = 3,
+    cmd = "buysmallcrate",
+    allowed = {TEAM_BUILDER},
+    category = "Construction",
+})
+```
+
+---
+
+## 🔧 Addon Configuration
+
+All settings in `lua/rp_construction/sh_config.lua`:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `MaxPropsPerBlueprint` | `150` | Max props per blueprint (0 = unlimited) |
+| `MaxCratesPerPlayer` | `2` | Max simultaneous crates per player |
+| `SaveCooldown` | `10` | Seconds between saves |
+| `LoadCooldown` | `15` | Seconds between loads |
+| `CrateMaxMaterials` | `50` | Materials per large crate |
+| `SmallCrateMaxMaterials` | `15` | Materials per small crate |
+| `AllowedJobs` | `nil` | Allowed TEAM_ IDs (`nil` = everyone) |
+| `SWEPJobs` | `nil` | Jobs that auto-receive the SWEP |
+| `CrateAllowedJobs` | `nil` | Jobs allowed to use crates (`nil` = everyone) |
+| `BlacklistedEntities` | table | Blocked entity classes in blueprints |
+
+---
+
+## 🎮 Usage
+
+### Selection
+| Action | Control |
+|--------|---------|
+| Select/deselect a prop | Left click |
+| Radius selection | Right click |
+| Clear selection | R (if not aiming at vehicle) |
+| Open menu | Shift + Right click |
+
+### Placement
+| Action | Control |
+|--------|---------|
+| Rotate | Mouse wheel |
+| Adjust height | Shift + Mouse wheel |
+| Confirm | Left click |
+| Cancel | Right click or Escape |
+
+### Construction
+1. Builder places blueprint → blue holographic ghosts
+2. Player buys a **Material Crate** (F4 → Entities → Construction)
+3. Press **E** on crate to activate
+4. Approach ghost and press **E** to materialize
+
+### Vehicle Transport
+1. Spawn a simfphys vehicle (e.g. WW2 Opel, CCKW 6x6)
+2. Physgun the crate near the vehicle → auto-loads
+3. Drive to construction site
+4. Aim at vehicle with SWEP and press **R** to unload
+
+---
+
+## 🏗️ Technical Architecture
+
+### File Structure
+
+```
+rp_construction_system/
+├── lua/
+│   ├── autorun/          — Entry points (client + server init)
+│   ├── rp_construction/  — Core modules (13 files, sv_/cl_/sh_ prefix)
+│   ├── entities/         — 3 custom entities (ghost, crate, crate_small)
+│   └── weapons/          — SWEP weapon_construction
+├── models/               — Custom models (viewmodel, crates)
+├── materials/            — Model textures
+└── sql/schema.sql        — Optional DB schema
+```
+
+### Client/Server Separation
+
+| Prefix | Runs on | Role |
+|--------|---------|------|
+| `sv_` | Server only | Business logic, validation, DB |
+| `cl_` | Client only | UI, rendering, local storage |
+| `sh_` | Both | Shared configuration |
+
+The client has **zero authority**. Every action is sent via net message and **re-validated** server-side.
+
+---
+
+## 🔒 Security
+
+- **Rate limiting** — Configurable cooldowns per action
+- **Server validation** — Every blueprint is validated: allowed classes, prop count, data integrity
+- **Blacklist** — Forbidden entity classes (money_printer, drug_lab, etc.)
+- **FPP/CPPI** — PhysgunPickup, CanTool, GravGunPickupAllowed hooks for crates
+- **Job restrictions** — SWEP and crates can be restricted to specific DarkRP jobs
+- **SQL injection** — Prepared statements exclusively (MySQLOO)
+
+---
+
+## 🗄️ Database (optional)
+
+The system works **entirely without a database**. Blueprints are stored locally on the player's PC.
+
+The optional SQL schema provides logging and future sharing features.
+
+---
+
+## 🚛 Supported Vehicles
+
+**simfphys** (primary):
+- Opel Blitz WW2, CCKW 6x6, and any simfphys vehicle
+- Per-model calibrated cargo offsets
+
+**LVS** (secondary, documented):
+- Auto-detection of `lvs_*` classes
+- Default offset from model bounds
+
+Custom offsets can be added for any vehicle model.
+
+---
+
+## 🙏 Credits
+
+- **AdvDupe2 decoder** — Based on [wiremod/advdupe2](https://github.com/wiremod/advdupe2) (Apache 2.0)
+- **WW2 models** — Crates and vehicles from WW2 Workshop packs (content pack [3008026539](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539))
+- **Viewmodel** — `v_fortnite_builder.mdl` (Workshop) / `c_slam.mdl` (dev fallback)
+- **Placement panel** — Inspired by AdvDupe2 interface
+
+---
+
+## 📄 License
+
+MIT
