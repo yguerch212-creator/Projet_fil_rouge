@@ -93,49 +93,85 @@ function SWEP:Reload()
     self.NextReload = CurTime() + 0.5
 
     local tr = ply:GetEyeTrace()
+    local hitEnt = tr.Entity
 
-    -- Véhicule simfphys visé ?
-    if IsValid(tr.Entity) and tr.Entity:GetClass() == "gmod_sent_vehicle_fphysics_base" then
-        local vehicle = tr.Entity
+    -- Trouver le véhicule simfphys : l'entité visée OU son parent (sièges, etc.)
+    local vehicle = nil
+    if IsValid(hitEnt) then
+        local check = hitEnt
+        for i = 1, 5 do -- remonter max 5 niveaux de parents
+            if not IsValid(check) then break end
+            if check:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+                vehicle = check
+                break
+            end
+            -- Vérifier aussi si c'est un véhicule Source lié à simfphys
+            if check.IsSimfphyscar or check.simfphysdata then
+                vehicle = check
+                break
+            end
+            check = check:GetParent()
+        end
+    end
+
+    -- Si on vise une caisse, chercher un véhicule à proximité
+    local targetCrate = nil
+    if not vehicle and IsValid(hitEnt) then
+        local cls = hitEnt:GetClass()
+        if cls == "construction_crate" or cls == "construction_crate_small" then
+            targetCrate = hitEnt
+
+            -- Caisse déjà chargée ? → décharger
+            if targetCrate.LoadedVehicle then
+                targetCrate:UnloadFromVehicle()
+                DarkRP.notify(ply, 0, 4, "Caisse dechargee !")
+                return
+            end
+
+            -- Chercher un véhicule simfphys proche de la caisse
+            for _, ent in ipairs(ents.FindInSphere(hitEnt:GetPos(), 300)) do
+                if ent:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+                    vehicle = ent
+                    break
+                end
+            end
+        end
+    end
+
+    if vehicle then
         local dist = ply:GetPos():Distance(vehicle:GetPos())
-        if dist > 300 then
+        if dist > 400 then
             DarkRP.notify(ply, 1, 3, "Trop loin du vehicule !")
             return
         end
 
         -- Vérifier si ce véhicule a déjà une caisse chargée → décharger
-        for _, ent in ipairs(ents.FindByClass("construction_crate")) do
-            if ent.LoadedVehicle == vehicle then
-                ent:UnloadFromVehicle()
-                DarkRP.notify(ply, 0, 4, "Caisse dechargee du vehicule !")
-                return
-            end
-        end
-        for _, ent in ipairs(ents.FindByClass("construction_crate_small")) do
-            if ent.LoadedVehicle == vehicle then
-                ent:UnloadFromVehicle()
-                DarkRP.notify(ply, 0, 4, "Caisse dechargee du vehicule !")
-                return
+        for _, cls in ipairs({"construction_crate", "construction_crate_small"}) do
+            for _, ent in ipairs(ents.FindByClass(cls)) do
+                if ent.LoadedVehicle == vehicle then
+                    ent:UnloadFromVehicle()
+                    DarkRP.notify(ply, 0, 4, "Caisse dechargee du vehicule !")
+                    return
+                end
             end
         end
 
-        -- Pas de caisse chargée → chercher une caisse proche du véhicule pour charger
-        local vPos = vehicle:GetPos()
-        local nearCrate = nil
-        local nearDist = 200 -- rayon de détection
-
-        for _, ent in ipairs(ents.FindInSphere(vPos, nearDist)) do
-            if (ent:GetClass() == "construction_crate" or ent:GetClass() == "construction_crate_small")
-               and not ent.LoadedVehicle
-               and not ent:GetNWBool("IsLoaded", false) then
-                nearCrate = ent
-                break
+        -- Charger : si on visait une caisse précise, l'utiliser ; sinon chercher la plus proche
+        if not targetCrate then
+            local vPos = vehicle:GetPos()
+            for _, ent in ipairs(ents.FindInSphere(vPos, 300)) do
+                local cls = ent:GetClass()
+                if (cls == "construction_crate" or cls == "construction_crate_small")
+                   and not ent.LoadedVehicle then
+                    targetCrate = ent
+                    break
+                end
             end
         end
 
-        if nearCrate then
-            nearCrate:LoadOntoVehicle(vehicle)
-            DarkRP.notify(ply, 0, 4, "Caisse chargee sur le vehicule ! (" .. nearCrate:GetRemainingMats() .. " materiaux)")
+        if targetCrate then
+            targetCrate:LoadOntoVehicle(vehicle)
+            DarkRP.notify(ply, 0, 4, "Caisse chargee ! (" .. targetCrate:GetRemainingMats() .. " materiaux)")
         else
             DarkRP.notify(ply, 1, 3, "Aucune caisse a proximite du vehicule !")
         end
