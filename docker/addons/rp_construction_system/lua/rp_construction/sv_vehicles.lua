@@ -10,15 +10,15 @@ ConstructionSystem.Vehicles = ConstructionSystem.Vehicles or {}
 -- Ajoutez vos véhicules ici : [entity_class] = { pos = Vector, ang = Angle }
 -- pos est relatif au centre du véhicule (x=avant, y=gauche, z=haut)
 ConstructionSystem.Vehicles.CargoOffsets = {
-    -- simfphys WW2
-    ["sim_fphy_codww2opel"]            = { pos = Vector(-80, 0, 40),  ang = Angle(0, 0, 0) },
-    ["sim_fphy_codww2opel_ammo"]       = { pos = Vector(-80, 0, 40),  ang = Angle(0, 0, 0) },
-    ["simfphys_cbww2_cckw6x6"]         = { pos = Vector(-100, 0, 50), ang = Angle(0, 0, 0) },
-    ["simfphys_cbww2_cckw6x6_ammo"]    = { pos = Vector(-100, 0, 50), ang = Angle(0, 0, 0) },
+    -- simfphys WW2 (offsets calibrés pour le cargo bed)
+    ["sim_fphy_codww2opel"]            = { pos = Vector(-80, 0, 15),  ang = Angle(0, 0, 0) },
+    ["sim_fphy_codww2opel_ammo"]       = { pos = Vector(-80, 0, 15),  ang = Angle(0, 0, 0) },
+    ["simfphys_cbww2_cckw6x6"]         = { pos = Vector(-100, 0, 20), ang = Angle(0, 0, 0) },
+    ["simfphys_cbww2_cckw6x6_ammo"]    = { pos = Vector(-100, 0, 20), ang = Angle(0, 0, 0) },
 }
 
 -- Offset par défaut pour les véhicules non listés
-ConstructionSystem.Vehicles.DefaultOffset = { pos = Vector(-70, 0, 45), ang = Angle(0, 0, 0) }
+ConstructionSystem.Vehicles.DefaultOffset = { pos = Vector(-70, 0, 10), ang = Angle(0, 0, 0) }
 
 ---------------------------------------------------------------------------
 -- Détection du type de véhicule
@@ -71,11 +71,11 @@ function ConstructionSystem.Vehicles.GetCargoOffset(ent)
         end
     end
 
-    -- Offset par défaut basé sur la taille du véhicule
+    -- Offset par défaut basé sur la taille du véhicule (dans le cargo, pas au-dessus)
     local mins, maxs = ent:GetModelBounds()
     if mins and maxs then
         return {
-            pos = Vector(mins.x * 0.6, 0, maxs.z + 5),
+            pos = Vector(mins.x * 0.5, 0, 10),
             ang = Angle(0, 0, 0)
         }
     end
@@ -142,8 +142,24 @@ function ConstructionSystem.Vehicles.DetachCrate(crate)
 
     local vehicle = crate:GetNWEntity("parent_vehicle")
 
+    -- Calculer la position de déchargement (à côté du véhicule, pas à l'origine)
+    local dropPos = crate:GetPos() -- Position actuelle (monde) avant détach
+    local dropAng = Angle(0, 0, 0)
+
+    if IsValid(vehicle) then
+        -- Déposer sur le côté droit du véhicule, au sol
+        local vRight = vehicle:GetRight()
+        local vPos = vehicle:GetPos()
+        dropPos = vPos + vRight * 120 + Vector(0, 0, 20)
+        dropAng = vehicle:GetAngles()
+        dropAng.p = 0
+        dropAng.r = 0
+    end
+
     -- Détacher
     crate:SetParent(nil)
+    crate:SetPos(dropPos)
+    crate:SetAngles(dropAng)
     crate:SetNWBool("attached_to_vehicle", false)
     crate:SetNWEntity("parent_vehicle", NULL)
 

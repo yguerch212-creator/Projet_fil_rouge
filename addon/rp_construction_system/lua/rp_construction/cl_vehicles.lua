@@ -1,6 +1,7 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Module Véhicules (Client)
-    HUD indicateur + binds pour charger/décharger les caisses
+    HUD indicateur + touche E pour charger/décharger les caisses
+    Fonctionne sans SWEP — tout joueur peut charger/décharger
 ---------------------------------------------------------------------------]]
 
 ConstructionSystem.Vehicles = ConstructionSystem.Vehicles or {}
@@ -32,31 +33,38 @@ function ConstructionSystem.Vehicles.GetLookedVehicle()
     return nil
 end
 
+-- Chercher une caisse proche (non attachée)
+function ConstructionSystem.Vehicles.FindNearbyCrate()
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return false end
+
+    for _, ent in pairs(ents.FindByClass("construction_crate")) do
+        if IsValid(ent) and not ent:GetNWBool("attached_to_vehicle", false) then
+            if ent:GetPos():Distance(ply:GetPos()) < 200 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Cooldown anti-spam
+local lastAction = 0
+
 -- HUD : affiche les instructions quand on regarde un véhicule
 hook.Add("HUDPaint", "Construction_VehicleHUD", function()
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
-
-    -- Seulement si le joueur a le SWEP de construction
-    local wep = ply:GetActiveWeapon()
-    if not IsValid(wep) or wep:GetClass() ~= "weapon_construction" then return end
+    if ply:InVehicle() then return end
 
     local vehicle = ConstructionSystem.Vehicles.GetLookedVehicle()
     if not IsValid(vehicle) then return end
 
-    local hasCrate = vehicle:GetNWBool("has_crate", false) or
-                     (vehicle.ConstructionCrate and IsValid(vehicle.ConstructionCrate))
+    local hasCrate = vehicle:GetNWBool("has_crate", false)
+    local nearCrate = ConstructionSystem.Vehicles.FindNearbyCrate()
 
-    -- Chercher si une caisse est proche
-    local nearCrate = false
-    for _, ent in pairs(ents.FindByClass("construction_crate")) do
-        if IsValid(ent) and not ent:GetNWBool("attached_to_vehicle", false) then
-            if ent:GetPos():Distance(ply:GetPos()) < 200 then
-                nearCrate = true
-                break
-            end
-        end
-    end
+    -- Rien à montrer si pas de caisse et pas de caisse proche
+    if not hasCrate and not nearCrate then return end
 
     -- Afficher les instructions
     local boxW, boxH = 320, 50
@@ -66,40 +74,42 @@ hook.Add("HUDPaint", "Construction_VehicleHUD", function()
     draw.RoundedBox(6, boxX, boxY, boxW, boxH, Color(30, 30, 30, 200))
 
     if hasCrate then
-        draw.SimpleText("Appuyez [R] pour décharger la caisse", "DermaDefaultBold",
+        draw.SimpleText("[E] Décharger la caisse", "DermaDefaultBold",
             boxX + boxW / 2, boxY + boxH / 2, Color(255, 180, 50), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     elseif nearCrate then
-        draw.SimpleText("Appuyez [R] pour charger la caisse", "DermaDefaultBold",
+        draw.SimpleText("[E] Charger la caisse dans le véhicule", "DermaDefaultBold",
             boxX + boxW / 2, boxY + boxH / 2, Color(100, 255, 100), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-    else
-        draw.SimpleText("Véhicule compatible", "DermaDefault",
-            boxX + boxW / 2, boxY + boxH / 2, Color(150, 150, 150), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     end
 end)
 
--- Bind : Reload (R) sur un véhicule = charger/décharger
+-- Bind : touche E sur un véhicule (quand pas dans le véhicule) = charger/décharger
 hook.Add("PlayerBindPress", "Construction_VehicleBind", function(ply, bind, pressed)
     if not pressed then return end
-    if not string.find(bind, "+reload") then return end
+    if not string.find(bind, "+use") then return end
+    if ply:InVehicle() then return end
 
-    local wep = ply:GetActiveWeapon()
-    if not IsValid(wep) or wep:GetClass() ~= "weapon_construction" then return end
+    -- Cooldown
+    if CurTime() - lastAction < 1 then return end
 
     local vehicle = ConstructionSystem.Vehicles.GetLookedVehicle()
     if not IsValid(vehicle) then return end
 
-    -- Vérifier si le véhicule a une caisse
     local hasCrate = vehicle:GetNWBool("has_crate", false)
+    local nearCrate = ConstructionSystem.Vehicles.FindNearbyCrate()
+
+    if not hasCrate and not nearCrate then return end
+
+    lastAction = CurTime()
 
     if hasCrate then
         net.Start("Construction_DetachCrate")
         net.WriteEntity(vehicle)
         net.SendToServer()
-    else
+    elseif nearCrate then
         net.Start("Construction_AttachCrate")
         net.WriteEntity(vehicle)
         net.SendToServer()
     end
 
-    return true -- Bloquer le reload normal du SWEP
+    return true -- Bloquer le Use normal (sinon entre dans le véhicule)
 end)
