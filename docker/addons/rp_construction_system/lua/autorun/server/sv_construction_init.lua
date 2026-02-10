@@ -82,6 +82,14 @@ resource.AddFile("models/hts/ww2ns/props/dun/dun_wood_crate_03.dx90.vtx")
 resource.AddFile("materials/models/hts/ww2ns/props/dun/dun_wood_crate_01_col.vmt")
 resource.AddFile("materials/models/hts/ww2ns/props/dun/dun_wood_crate_01_col.vtf")
 resource.AddFile("materials/models/hts/ww2ns/props/dun/dun_wood_crate_01_nml.vtf")
+-- Petite caisse
+resource.AddFile("models/props_supplies/german/r_crate_pak50mm_stacked.mdl")
+resource.AddFile("models/props_supplies/german/r_crate_pak50mm_stacked.vvd")
+resource.AddFile("models/props_supplies/german/r_crate_pak50mm_stacked.phy")
+resource.AddFile("models/props_supplies/german/r_crate_pak50mm_stacked.dx90.vtx")
+resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm.vmt")
+resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm.vtf")
+resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm_normal.vtf")
 
 -- 11. Connexion MySQL
 hook.Add("InitPostEntity", "Construction_DBConnect", function()

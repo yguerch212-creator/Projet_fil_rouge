@@ -2,12 +2,22 @@
     DarkRP Entities - Projet Fil Rouge
 ---------------------------------------------------------------------------]]
 
-DarkRP.createEntity("Caisse de Materiaux", {
+DarkRP.createEntity("Grosse Caisse de Materiaux", {
     ent = "construction_crate",
-    model = "models/props_junk/wood_crate001a.mdl",
+    model = "models/hts/ww2ns/props/dun/dun_wood_crate_03.mdl",
     price = 1,
-    max = 2,  -- Synchronisé avec ConstructionSystem.Config.MaxCratesPerPlayer
+    max = 2,
     cmd = "buycrate",
-    allowed = {TEAM_BUILDER},
+    allowed = {},  -- Tout le monde (configurable par le serveur)
+    category = "Construction",
+})
+
+DarkRP.createEntity("Petite Caisse de Materiaux", {
+    ent = "construction_crate_small",
+    model = "models/props_supplies/german/r_crate_pak50mm_stacked.mdl",
+    price = 1,
+    max = 4,
+    cmd = "buysmallcrate",
+    allowed = {},  -- Tout le monde (configurable par le serveur)
     category = "Construction",
 })

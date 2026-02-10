@@ -11,10 +11,10 @@ ConstructionSystem.Vehicles = ConstructionSystem.Vehicles or {}
 -- pos est relatif au centre du véhicule (x=avant, y=gauche, z=haut)
 ConstructionSystem.Vehicles.CargoOffsets = {
     -- simfphys WW2 (offsets calibrés pour le cargo bed)
-    ["sim_fphy_codww2opel"]            = { pos = Vector(-80, 0, 15),  ang = Angle(0, 0, 0) },
-    ["sim_fphy_codww2opel_ammo"]       = { pos = Vector(-80, 0, 15),  ang = Angle(0, 0, 0) },
-    ["simfphys_cbww2_cckw6x6"]         = { pos = Vector(-100, 0, 20), ang = Angle(0, 0, 0) },
-    ["simfphys_cbww2_cckw6x6_ammo"]    = { pos = Vector(-100, 0, 20), ang = Angle(0, 0, 0) },
+    ["sim_fphy_codww2opel"]            = { pos = Vector(-80, 0, 35),  ang = Angle(0, 0, 0) },
+    ["sim_fphy_codww2opel_ammo"]       = { pos = Vector(-80, 0, 35),  ang = Angle(0, 0, 0) },
+    ["simfphys_cbww2_cckw6x6"]         = { pos = Vector(-100, 0, 40), ang = Angle(0, 0, 0) },
+    ["simfphys_cbww2_cckw6x6_ammo"]    = { pos = Vector(-100, 0, 40), ang = Angle(0, 0, 0) },
 }
 
 -- Offset par défaut pour les véhicules non listés
@@ -95,9 +95,19 @@ function ConstructionSystem.Vehicles.AttachCrate(crate, vehicle)
         return false, "Ce véhicule n'est pas supporté"
     end
 
-    -- Vérifier qu'il n'y a pas déjà une caisse attachée
-    if vehicle.ConstructionCrate and IsValid(vehicle.ConstructionCrate) then
-        return false, "Ce véhicule a déjà une caisse"
+    -- Vérifier le nombre de caisses attachées (max 2 grosses)
+    vehicle.ConstructionCrates = vehicle.ConstructionCrates or {}
+
+    -- Nettoyer les entrées invalides
+    for i = #vehicle.ConstructionCrates, 1, -1 do
+        if not IsValid(vehicle.ConstructionCrates[i]) then
+            table.remove(vehicle.ConstructionCrates, i)
+        end
+    end
+
+    local maxCrates = 2
+    if #vehicle.ConstructionCrates >= maxCrates then
+        return false, "Ce véhicule est plein (" .. maxCrates .. " caisses max)"
     end
 
     -- Vérifier que la caisse n'est pas déjà attachée
@@ -108,9 +118,18 @@ function ConstructionSystem.Vehicles.AttachCrate(crate, vehicle)
     local offset = ConstructionSystem.Vehicles.GetCargoOffset(vehicle)
     if not offset then return false, "Impossible de calculer la position" end
 
+    -- Décaler la 2ème caisse sur le côté
+    local crateIndex = #vehicle.ConstructionCrates
+    local finalPos = Vector(offset.pos.x, offset.pos.y, offset.pos.z)
+    if crateIndex == 1 then
+        finalPos.y = finalPos.y + 30 -- 2ème caisse décalée à droite
+    elseif crateIndex == 0 then
+        finalPos.y = finalPos.y - 15 -- 1ère caisse légèrement à gauche
+    end
+
     -- Attacher
     crate:SetParent(vehicle)
-    crate:SetLocalPos(offset.pos)
+    crate:SetLocalPos(finalPos)
     crate:SetLocalAngles(offset.ang)
 
     -- Désactiver la physique de la caisse
@@ -123,10 +142,8 @@ function ConstructionSystem.Vehicles.AttachCrate(crate, vehicle)
     crate:SetNWBool("attached_to_vehicle", true)
     crate:SetNWEntity("parent_vehicle", vehicle)
     vehicle:SetNWBool("has_crate", true)
-    vehicle.ConstructionCrate = crate
-
-    -- Stocker le propriétaire d'origine
-    crate._OriginalOwner = crate:GetNWEntity("owner")
+    vehicle:SetNWInt("crate_count", crateIndex + 1)
+    table.insert(vehicle.ConstructionCrates, crate)
 
     print("[Construction] Caisse attachée au véhicule " .. vehicle:GetClass())
     return true
@@ -172,8 +189,15 @@ function ConstructionSystem.Vehicles.DetachCrate(crate)
 
     -- Nettoyer le véhicule
     if IsValid(vehicle) then
-        vehicle:SetNWBool("has_crate", false)
-        vehicle.ConstructionCrate = nil
+        vehicle.ConstructionCrates = vehicle.ConstructionCrates or {}
+        for i, c in ipairs(vehicle.ConstructionCrates) do
+            if c == crate then
+                table.remove(vehicle.ConstructionCrates, i)
+                break
+            end
+        end
+        vehicle:SetNWInt("crate_count", #vehicle.ConstructionCrates)
+        vehicle:SetNWBool("has_crate", #vehicle.ConstructionCrates > 0)
     end
 
     print("[Construction] Caisse détachée du véhicule")
@@ -200,12 +224,14 @@ net.Receive("Construction_AttachCrate", function(len, ply)
     local closestCrate = nil
     local closestDist = 200 -- rayon max
 
-    for _, ent in pairs(ents.FindByClass("construction_crate")) do
-        if IsValid(ent) and not ent:GetNWBool("attached_to_vehicle", false) then
-            local dist = ent:GetPos():Distance(ply:GetPos())
-            if dist < closestDist then
-                closestDist = dist
-                closestCrate = ent
+    for _, ent in pairs(ents.GetAll()) do
+        if IsValid(ent) and (ent:GetClass() == "construction_crate" or ent:GetClass() == "construction_crate_small") then
+            if not ent:GetNWBool("attached_to_vehicle", false) then
+                local dist = ent:GetPos():Distance(ply:GetPos())
+                if dist < closestDist then
+                    closestDist = dist
+                    closestCrate = ent
+                end
             end
         end
     end
@@ -229,12 +255,22 @@ net.Receive("Construction_DetachCrate", function(len, ply)
     local vehicle = net.ReadEntity()
     if not IsValid(vehicle) then return end
 
-    if not vehicle.ConstructionCrate or not IsValid(vehicle.ConstructionCrate) then
+    vehicle.ConstructionCrates = vehicle.ConstructionCrates or {}
+    -- Nettoyer
+    for i = #vehicle.ConstructionCrates, 1, -1 do
+        if not IsValid(vehicle.ConstructionCrates[i]) then
+            table.remove(vehicle.ConstructionCrates, i)
+        end
+    end
+
+    if #vehicle.ConstructionCrates == 0 then
         ply:ChatPrint("[Construction] Ce véhicule n'a pas de caisse")
         return
     end
 
-    local success, err = ConstructionSystem.Vehicles.DetachCrate(vehicle.ConstructionCrate)
+    -- Détacher la dernière caisse chargée
+    local lastCrate = vehicle.ConstructionCrates[#vehicle.ConstructionCrates]
+    local success, err = ConstructionSystem.Vehicles.DetachCrate(lastCrate)
     if success then
         ply:ChatPrint("[Construction] Caisse déchargée !")
     else
@@ -247,8 +283,12 @@ end)
 ---------------------------------------------------------------------------
 
 hook.Add("EntityRemoved", "Construction_VehicleRemoved", function(ent)
-    if ent.ConstructionCrate and IsValid(ent.ConstructionCrate) then
-        ConstructionSystem.Vehicles.DetachCrate(ent.ConstructionCrate)
+    if ent.ConstructionCrates then
+        for _, crate in ipairs(ent.ConstructionCrates) do
+            if IsValid(crate) then
+                ConstructionSystem.Vehicles.DetachCrate(crate)
+            end
+        end
     end
 end)
 

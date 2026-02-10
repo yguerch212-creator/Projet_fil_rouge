@@ -33,11 +33,15 @@ ConstructionSystem.Config.SelectionRadiusDefault = 500  -- Rayon par défaut
 ---------------------------------------------------------------------------
 -- CAISSE DE MATÉRIAUX
 ---------------------------------------------------------------------------
--- Modèle de caisse (inclus dans l'addon)
--- Pour changer : remplacer le .mdl et ses fichiers dans models/hts/ww2ns/props/dun/
+-- Grosse caisse (50 matériaux, transportable en camion)
 ConstructionSystem.Config.CrateModel = "models/hts/ww2ns/props/dun/dun_wood_crate_03.mdl"
-ConstructionSystem.Config.CrateMaxMaterials = 30   -- Nombre de props matérialisables par caisse
-ConstructionSystem.Config.CratePrice = 1            -- Prix F4
+ConstructionSystem.Config.CrateMaxMaterials = 50
+ConstructionSystem.Config.CratePrice = 1
+
+-- Petite caisse (15 matériaux, spawn sur place)
+ConstructionSystem.Config.SmallCrateModel = "models/props_supplies/german/r_crate_pak50mm_stacked.mdl"
+ConstructionSystem.Config.SmallCrateMaxMaterials = 15
+ConstructionSystem.Config.SmallCratePrice = 1
 
 ---------------------------------------------------------------------------
 -- SÉCURITÉ : entités interdites dans les blueprints

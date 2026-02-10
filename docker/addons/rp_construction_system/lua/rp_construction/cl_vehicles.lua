@@ -38,9 +38,9 @@ function ConstructionSystem.Vehicles.FindNearbyCrate()
     local ply = LocalPlayer()
     if not IsValid(ply) then return false end
 
-    for _, ent in pairs(ents.FindByClass("construction_crate")) do
-        if IsValid(ent) and not ent:GetNWBool("attached_to_vehicle", false) then
-            if ent:GetPos():Distance(ply:GetPos()) < 200 then
+    for _, ent in pairs(ents.GetAll()) do
+        if IsValid(ent) and (ent:GetClass() == "construction_crate" or ent:GetClass() == "construction_crate_small") then
+            if not ent:GetNWBool("attached_to_vehicle", false) and ent:GetPos():Distance(ply:GetPos()) < 200 then
                 return true
             end
         end
@@ -74,10 +74,10 @@ hook.Add("HUDPaint", "Construction_VehicleHUD", function()
     draw.RoundedBox(6, boxX, boxY, boxW, boxH, Color(30, 30, 30, 200))
 
     if hasCrate then
-        draw.SimpleText("[E] Décharger la caisse", "DermaDefaultBold",
+        draw.SimpleText("[R] Décharger la caisse", "DermaDefaultBold",
             boxX + boxW / 2, boxY + boxH / 2, Color(255, 180, 50), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     elseif nearCrate then
-        draw.SimpleText("[E] Charger la caisse dans le véhicule", "DermaDefaultBold",
+        draw.SimpleText("[R] Charger la caisse dans le véhicule", "DermaDefaultBold",
             boxX + boxW / 2, boxY + boxH / 2, Color(100, 255, 100), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     end
 end)
@@ -85,7 +85,7 @@ end)
 -- Bind : touche E sur un véhicule (quand pas dans le véhicule) = charger/décharger
 hook.Add("PlayerBindPress", "Construction_VehicleBind", function(ply, bind, pressed)
     if not pressed then return end
-    if not string.find(bind, "+use") then return end
+    if not string.find(bind, "+reload") then return end
     if ply:InVehicle() then return end
 
     -- Cooldown
