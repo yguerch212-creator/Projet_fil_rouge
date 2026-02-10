@@ -27,10 +27,11 @@ SWEP.SlotPos = 5
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = true
 
--- Viewmodel Fortnite Builder (avec bras ValveBiped complets)
-SWEP.ViewModel = "models/weapons/v_fortnite_builder.mdl"
-SWEP.WorldModel = "models/weapons/w_fortnite_builder.mdl"
-SWEP.UseHands = false
+-- Viewmodel HL2 SLAM (disponible sur tous les clients sans téléchargement)
+-- Note: les modèles Fortnite nécessitent FastDL ou Workshop pour être envoyés au client
+SWEP.ViewModel = "models/weapons/c_slam.mdl"
+SWEP.WorldModel = "models/weapons/w_slam.mdl"
+SWEP.UseHands = true
 SWEP.HoldType = "slam"
 
 function SWEP:Initialize()
