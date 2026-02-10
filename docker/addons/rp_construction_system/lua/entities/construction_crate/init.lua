@@ -68,10 +68,26 @@ function ENT:UseMaterial()
     return true
 end
 
+function ENT:CanPlayerUse(ply)
+    local allowed = ConstructionSystem.Config.CrateAllowedJobs
+    if not allowed then return true end -- nil = tout le monde
+    local team = ply:Team()
+    for _, jobId in ipairs(allowed) do
+        if team == jobId then return true end
+    end
+    return false
+end
+
 function ENT:Use(activator, caller)
     if not IsValid(activator) or not activator:IsPlayer() then return end
     if self.LastUse and self.LastUse > CurTime() then return end
     self.LastUse = CurTime() + 0.5
+
+    -- Vérification du job
+    if not self:CanPlayerUse(activator) then
+        DarkRP.notify(activator, 1, 3, "Votre metier n'a pas acces aux caisses de materiaux !")
+        return
+    end
 
     if self.Materials <= 0 then
         DarkRP.notify(activator, 1, 3, "Caisse vide !")

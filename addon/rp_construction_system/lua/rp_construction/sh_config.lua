@@ -75,6 +75,11 @@ ConstructionSystem.Config.AllowedJobs = nil
 -- nil = personne ne reçoit le SWEP auto (les joueurs doivent le recevoir autrement)
 ConstructionSystem.Config.SWEPJobs = nil  -- Configuré après le chargement des jobs (voir sv_construction_init.lua)
 
+-- Jobs autorisés à spawner ET utiliser les caisses de matériaux
+-- Table de TEAM_ IDs. nil = tout le monde peut utiliser les caisses
+-- Ex: {TEAM_BUILDER, TEAM_ARCHITECT, TEAM_MAYOR}
+ConstructionSystem.Config.CrateAllowedJobs = nil  -- Configuré après le chargement des jobs
+
 ---------------------------------------------------------------------------
 -- DATABASE
 ---------------------------------------------------------------------------

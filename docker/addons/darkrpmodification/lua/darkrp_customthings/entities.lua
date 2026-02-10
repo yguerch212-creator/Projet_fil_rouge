@@ -8,7 +8,7 @@ DarkRP.createEntity("Grosse Caisse de Materiaux", {
     price = 1,
     max = 2,
     cmd = "buycrate",
-    allowed = {},  -- Tout le monde (configurable par le serveur)
+    allowed = {TEAM_BUILDER},  -- Restreint aux Constructeurs (ajouter d'autres TEAM_ si besoin)
     category = "Construction",
 })
 
@@ -18,6 +18,6 @@ DarkRP.createEntity("Petite Caisse de Materiaux", {
     price = 1,
     max = 4,
     cmd = "buysmallcrate",
-    allowed = {},  -- Tout le monde (configurable par le serveur)
+    allowed = {TEAM_BUILDER},  -- Restreint aux Constructeurs (ajouter d'autres TEAM_ si besoin)
     category = "Construction",
 })

@@ -120,7 +120,13 @@ hook.Add("loadCustomDarkRPItems", "Construction_SetupJobs", function()
         ConstructionSystem.Config.AllowedJobs = ConstructionSystem.Config.SWEPJobs
     end
 
+    -- Configure les jobs autorisés pour les caisses (même liste par défaut)
+    if not ConstructionSystem.Config.CrateAllowedJobs and ConstructionSystem.Config.SWEPJobs then
+        ConstructionSystem.Config.CrateAllowedJobs = ConstructionSystem.Config.SWEPJobs
+    end
+
     print("[Construction] Jobs SWEP: " .. (ConstructionSystem.Config.SWEPJobs and #ConstructionSystem.Config.SWEPJobs or 0) .. " job(s)")
+    print("[Construction] Jobs Caisses: " .. (ConstructionSystem.Config.CrateAllowedJobs and #ConstructionSystem.Config.CrateAllowedJobs or 0) .. " job(s)")
 end)
 
 -- 12. Distribution SWEP au changement de job
