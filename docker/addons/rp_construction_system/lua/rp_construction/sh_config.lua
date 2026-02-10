@@ -104,4 +104,7 @@ ConstructionSystem.NetMessages = {
     "Construction_CancelPlacement",     -- Client → Serveur : annuler
     -- Ghosts
     "Construction_MaterializeGhost",    -- Client → Serveur : matérialiser un ghost
+    -- Véhicules
+    "Construction_AttachCrate",         -- Client → Serveur : charger une caisse
+    "Construction_DetachCrate",         -- Client → Serveur : décharger une caisse
 }

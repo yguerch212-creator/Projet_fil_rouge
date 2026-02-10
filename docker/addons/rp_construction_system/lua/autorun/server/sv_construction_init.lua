@@ -39,12 +39,16 @@ include("rp_construction/sv_permissions.lua")
 -- 8. Module sécurité & logging
 include("rp_construction/sv_security.lua")
 
+-- 9. Module véhicules (simfphys + LVS + Source)
+include("rp_construction/sv_vehicles.lua")
+
 -- 9. Fichiers client à envoyer
 AddCSLuaFile("rp_construction/cl_selection.lua")
 AddCSLuaFile("rp_construction/cl_ad2_decoder.lua")
 AddCSLuaFile("rp_construction/cl_blueprints.lua")
 AddCSLuaFile("rp_construction/cl_menu.lua")
 AddCSLuaFile("rp_construction/cl_placement.lua")
+AddCSLuaFile("rp_construction/cl_vehicles.lua")
 
 -- 10. Ressources custom (fichiers dans garrysmod/download/, envoyés au client)
 -- SWEP viewmodel Fortnite Builder (~2.3 MB total)

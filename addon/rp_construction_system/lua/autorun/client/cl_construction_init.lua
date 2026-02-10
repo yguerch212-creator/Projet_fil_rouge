@@ -8,5 +8,6 @@ include("rp_construction/cl_ad2_decoder.lua")
 include("rp_construction/cl_blueprints.lua")
 include("rp_construction/cl_menu.lua")
 include("rp_construction/cl_placement.lua")
+include("rp_construction/cl_vehicles.lua")
 
 print("[Construction] Client initialisé - v" .. ConstructionSystem.Config.Version)
