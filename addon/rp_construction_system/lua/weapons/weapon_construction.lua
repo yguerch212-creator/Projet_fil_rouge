@@ -27,12 +27,12 @@ SWEP.SlotPos = 5
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = true
 
--- Viewmodel GMod Toolgun (disponible nativement, style outil de construction)
+-- Viewmodel HL2 SLAM (objet plat tenu en main, immersif)
 -- Note: les modèles Fortnite sont inclus mais nécessitent FastDL/Workshop
-SWEP.ViewModel = "models/weapons/c_toolgun.mdl"
-SWEP.WorldModel = "models/weapons/w_toolgun.mdl"
+SWEP.ViewModel = "models/weapons/c_slam.mdl"
+SWEP.WorldModel = "models/weapons/w_slam.mdl"
 SWEP.UseHands = true
-SWEP.HoldType = "revolver"
+SWEP.HoldType = "slam"
 
 function SWEP:Initialize()
     self:SetHoldType(self.HoldType)
