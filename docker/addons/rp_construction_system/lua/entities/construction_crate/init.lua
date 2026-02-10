@@ -134,6 +134,12 @@ function ENT:UnloadCrate()
     local vehicle = self:GetParent()
     local savedMats = self.Materials
 
+    -- Calculer la position de drop AVANT de détacher
+    local dropPos = self:GetPos() + Vector(0, 0, 50)
+    if IsValid(vehicle) then
+        dropPos = vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50)
+    end
+
     -- Reset NW
     self:SetNWBool("IsLoaded", false)
     self:SetNWEntity("LoadedVehicle", NULL)
@@ -141,25 +147,26 @@ function ENT:UnloadCrate()
     -- Détacher
     self:SetParent(nil)
 
-    -- Position à côté du véhicule
-    if IsValid(vehicle) then
-        self:SetPos(vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50))
-    end
-    self:SetAngles(Angle(0, 0, 0))
-
     -- Réactiver physique
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
     self:SetUseType(SIMPLE_USE)
 
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then
-        phys:EnableMotion(true)
-        phys:Wake()
-    end
+    -- Téléporter au tick suivant (SetParent(nil) restore l'ancienne pos)
+    local ent = self
+    timer.Simple(0, function()
+        if not IsValid(ent) then return end
+        ent:SetPos(dropPos)
+        ent:SetAngles(Angle(0, 0, 0))
+        local phys = ent:GetPhysicsObject()
+        if IsValid(phys) then
+            phys:EnableMotion(true)
+            phys:Wake()
+        end
+    end)
 
-    -- Restaurer matériaux (au cas où)
+    -- Restaurer matériaux
     self.Materials = savedMats
     self:SetNWInt("materials", savedMats)
 end

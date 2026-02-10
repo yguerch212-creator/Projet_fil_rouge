@@ -128,25 +128,31 @@ function ENT:UnloadCrate()
     local vehicle = self:GetParent()
     local savedMats = self.Materials
 
+    local dropPos = self:GetPos() + Vector(0, 0, 50)
+    if IsValid(vehicle) then
+        dropPos = vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50)
+    end
+
     self:SetNWBool("IsLoaded", false)
     self:SetNWEntity("LoadedVehicle", NULL)
     self:SetParent(nil)
-
-    if IsValid(vehicle) then
-        self:SetPos(vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50))
-    end
-    self:SetAngles(Angle(0, 0, 0))
 
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_NONE)
     self:SetUseType(SIMPLE_USE)
 
-    local phys = self:GetPhysicsObject()
-    if IsValid(phys) then
-        phys:EnableMotion(true)
-        phys:Wake()
-    end
+    local ent = self
+    timer.Simple(0, function()
+        if not IsValid(ent) then return end
+        ent:SetPos(dropPos)
+        ent:SetAngles(Angle(0, 0, 0))
+        local phys = ent:GetPhysicsObject()
+        if IsValid(phys) then
+            phys:EnableMotion(true)
+            phys:Wake()
+        end
+    end)
 
     self.Materials = savedMats
     self:SetNWInt("materials", savedMats)
