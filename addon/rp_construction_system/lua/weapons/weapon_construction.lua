@@ -83,20 +83,22 @@ function SWEP:SecondaryAttack()
     net.SendToServer()
 end
 
--- Reload (R): Charger/décharger caisse sur véhicule OU clear sélection
--- NOTE: SWEP:Reload() n'est PAS appelé côté serveur avec ClipSize=-1
--- On utilise un hook KeyPress à la place (voir en bas du fichier)
+-- Reload (R): avec ClipSize=-1, Reload() est appelé CLIENT seulement
+-- On envoie un net message au serveur pour exécuter la logique
 function SWEP:Reload()
-    -- Client-side only avec ClipSize=-1, ne fait rien
-end
-
--- La vraie logique Reload, appelée par le hook KeyPress
-function SWEP:DoReload()
-    local ply = self:GetOwner()
-    if not IsValid(ply) then return end
+    if SERVER then return end -- jamais appelé serveur mais au cas où
 
     if self.NextReload and self.NextReload > CurTime() then return end
     self.NextReload = CurTime() + 0.5
+
+    net.Start("Construction_VehicleReload")
+    net.SendToServer()
+end
+
+-- La vraie logique Reload côté serveur, appelée par net.Receive
+function SWEP:DoReload()
+    local ply = self:GetOwner()
+    if not IsValid(ply) then return end
 
     local tr = ply:GetEyeTrace()
     local hitEnt = tr.Entity
@@ -212,10 +214,12 @@ if CLIENT then
     end
 end
 
--- Hook serveur pour capturer la touche R (Reload n'est pas appelé serveur avec ClipSize=-1)
+-- Net receiver serveur pour le Reload (R)
 if SERVER then
-    hook.Add("KeyPress", "Construction_ReloadKey", function(ply, key)
-        if key ~= IN_RELOAD then return end
+    util.AddNetworkString("Construction_VehicleReload")
+
+    net.Receive("Construction_VehicleReload", function(len, ply)
+        if not IsValid(ply) then return end
         local wep = ply:GetActiveWeapon()
         if not IsValid(wep) or wep:GetClass() ~= "weapon_construction" then return end
         wep:DoReload()
