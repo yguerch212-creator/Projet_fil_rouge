@@ -83,115 +83,16 @@ function SWEP:SecondaryAttack()
     net.SendToServer()
 end
 
--- Reload (R): avec ClipSize=-1, Reload() est appelé CLIENT seulement
--- On envoie un net message au serveur pour exécuter la logique
+-- Reload (R): clear sélection OU décharger caisse du véhicule
+-- Le CHARGEMENT se fait automatiquement (physgun parent → Think détecte)
 function SWEP:Reload()
-    if SERVER then return end -- jamais appelé serveur mais au cas où
+    if SERVER then return end
 
     if self.NextReload and self.NextReload > CurTime() then return end
     self.NextReload = CurTime() + 0.5
 
     net.Start("Construction_VehicleReload")
     net.SendToServer()
-end
-
--- La vraie logique Reload côté serveur, appelée par net.Receive
-function SWEP:DoReload()
-    local ply = self:GetOwner()
-    if not IsValid(ply) then return end
-
-    local tr = ply:GetEyeTrace()
-    local hitEnt = tr.Entity
-
-    print("[Construction] Reload pressed. HitEnt:", hitEnt, "Class:", IsValid(hitEnt) and hitEnt:GetClass() or "none")
-
-    -- Trouver le véhicule simfphys : l'entité visée OU son parent (sièges, etc.)
-    local vehicle = nil
-    if IsValid(hitEnt) then
-        local check = hitEnt
-        for i = 1, 5 do
-            if not IsValid(check) then break end
-            print("[Construction]   Check parent " .. i .. ":", check:GetClass())
-            if check:GetClass() == "gmod_sent_vehicle_fphysics_base" then
-                vehicle = check
-                break
-            end
-            if check.IsSimfphyscar or check.simfphysdata then
-                vehicle = check
-                break
-            end
-            check = check:GetParent()
-        end
-    end
-    
-    print("[Construction] Vehicle found:", vehicle, "TargetCrate:", "checking...")
-
-    -- Si on vise une caisse, chercher un véhicule à proximité
-    local targetCrate = nil
-    if not vehicle and IsValid(hitEnt) then
-        local cls = hitEnt:GetClass()
-        if cls == "construction_crate" or cls == "construction_crate_small" then
-            targetCrate = hitEnt
-
-            -- Caisse déjà chargée ? → décharger
-            if targetCrate.LoadedVehicle then
-                targetCrate:UnloadFromVehicle()
-                DarkRP.notify(ply, 0, 4, "Caisse dechargee !")
-                return
-            end
-
-            -- Chercher un véhicule simfphys proche de la caisse
-            for _, ent in ipairs(ents.FindInSphere(hitEnt:GetPos(), 300)) do
-                if ent:GetClass() == "gmod_sent_vehicle_fphysics_base" then
-                    vehicle = ent
-                    break
-                end
-            end
-        end
-    end
-
-    if vehicle then
-        local dist = ply:GetPos():Distance(vehicle:GetPos())
-        if dist > 400 then
-            DarkRP.notify(ply, 1, 3, "Trop loin du vehicule !")
-            return
-        end
-
-        -- Vérifier si ce véhicule a déjà une caisse chargée → décharger
-        for _, cls in ipairs({"construction_crate", "construction_crate_small"}) do
-            for _, ent in ipairs(ents.FindByClass(cls)) do
-                if ent.LoadedVehicle == vehicle then
-                    ent:UnloadFromVehicle()
-                    DarkRP.notify(ply, 0, 4, "Caisse dechargee du vehicule !")
-                    return
-                end
-            end
-        end
-
-        -- Charger : si on visait une caisse précise, l'utiliser ; sinon chercher la plus proche
-        if not targetCrate then
-            local vPos = vehicle:GetPos()
-            for _, ent in ipairs(ents.FindInSphere(vPos, 300)) do
-                local cls = ent:GetClass()
-                if (cls == "construction_crate" or cls == "construction_crate_small")
-                   and not ent.LoadedVehicle then
-                    targetCrate = ent
-                    break
-                end
-            end
-        end
-
-        if targetCrate then
-            targetCrate:LoadOntoVehicle(vehicle)
-            DarkRP.notify(ply, 0, 4, "Caisse chargee ! (" .. targetCrate:GetRemainingMats() .. " materiaux)")
-        else
-            DarkRP.notify(ply, 1, 3, "Aucune caisse a proximite du vehicule !")
-        end
-        return
-    end
-
-    -- Pas de véhicule visé → clear sélection (comportement normal)
-    ConstructionSystem.Selection.Clear(ply)
 end
 
 -- HUD
@@ -214,7 +115,7 @@ if CLIENT then
     end
 end
 
--- Net receiver serveur pour le Reload (R)
+-- Net receiver serveur pour le Reload (R) : décharger OU clear sélection
 if SERVER then
     util.AddNetworkString("Construction_VehicleReload")
 
@@ -222,6 +123,40 @@ if SERVER then
         if not IsValid(ply) then return end
         local wep = ply:GetActiveWeapon()
         if not IsValid(wep) or wep:GetClass() ~= "weapon_construction" then return end
-        wep:DoReload()
+
+        local tr = ply:GetEyeTrace()
+        local hitEnt = tr.Entity
+
+        -- Trouver véhicule simfphys (entité visée ou son parent)
+        local vehicle = nil
+        if IsValid(hitEnt) then
+            local check = hitEnt
+            for i = 1, 5 do
+                if not IsValid(check) then break end
+                if check:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+                    vehicle = check
+                    break
+                end
+                check = check:GetParent()
+            end
+        end
+
+        -- Véhicule trouvé → chercher une caisse chargée dessus → décharger
+        if vehicle then
+            for _, cls in ipairs({"construction_crate", "construction_crate_small"}) do
+                for _, ent in ipairs(ents.FindByClass(cls)) do
+                    if ent:GetNWBool("IsLoaded", false) and ent:GetParent() == vehicle then
+                        ent:UnloadCrate()
+                        DarkRP.notify(ply, 0, 4, "Caisse dechargee !")
+                        return
+                    end
+                end
+            end
+            DarkRP.notify(ply, 1, 3, "Pas de caisse chargee sur ce vehicule !")
+            return
+        end
+
+        -- Pas de véhicule → clear sélection
+        ConstructionSystem.Selection.Clear(ply)
     end)
 end

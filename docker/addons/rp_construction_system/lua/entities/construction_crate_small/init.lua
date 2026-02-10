@@ -21,7 +21,10 @@ function ENT:Initialize()
     self:SetNWInt("max_materials", ConstructionSystem.Config.SmallCrateMaxMaterials)
 end
 
--- Permissions (même logique que la grosse caisse)
+---------------------------------------------------------------------------
+-- PERMISSIONS
+---------------------------------------------------------------------------
+
 hook.Add("PhysgunPickup", "Construction_SmallCratePhysgun", function(ply, ent)
     if ent:GetClass() ~= "construction_crate_small" then return end
     if ent:GetNWBool("IsLoaded", false) then return false end
@@ -45,6 +48,10 @@ hook.Add("GravGunPickupAllowed", "Construction_SmallCrateGravgun", function(ply,
     return true
 end)
 
+---------------------------------------------------------------------------
+-- FONCTIONS DE BASE
+---------------------------------------------------------------------------
+
 function ENT:GetRemainingMats()
     return self.Materials or 0
 end
@@ -53,144 +60,122 @@ function ENT:UseMaterial()
     if self.Materials <= 0 then return false end
     self.Materials = self.Materials - 1
     self:SetNWInt("materials", self.Materials)
-
     if self.Materials <= 0 then
         timer.Simple(0.5, function()
             if IsValid(self) then self:Remove() end
         end)
     end
-
     return true
 end
 
 function ENT:CanPlayerUse(ply)
     local allowed = ConstructionSystem.Config.CrateAllowedJobs
     if not allowed then return true end
-    local team = ply:Team()
     for _, jobId in ipairs(allowed) do
-        if team == jobId then return true end
+        if ply:Team() == jobId then return true end
     end
     return false
-end
-
-function ENT:LoadOntoVehicle(vehicle)
-    if not IsValid(vehicle) then return false end
-    if self.LoadedVehicle then return false end
-
-    self.LoadedVehicle = vehicle
-    self._OrigModel = self:GetModel()
-
-    self:SetParent(nil)
-    self:PhysicsDestroy()
-    self:SetSolid(SOLID_NONE)
-    self:SetMoveType(MOVETYPE_NONE)
-    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
-
-    self:SetParent(vehicle)
-    self:SetLocalPos(Vector(-80, 0, 45))
-    self:SetLocalAngles(Angle(0, 0, 0))
-
-    self:SetNWBool("IsLoaded", true)
-    self:SetNWEntity("LoadedVehicle", vehicle)
-
-    return true
-end
-
-function ENT:UnloadFromVehicle()
-    if not self.LoadedVehicle then return false end
-
-    local vehicle = self.LoadedVehicle
-    self.LoadedVehicle = nil
-
-    self:SetNWBool("IsLoaded", false)
-    self:SetNWEntity("LoadedVehicle", NULL)
-    self._IsUnloading = true
-
-    self:SetParent(nil)
-
-    local dropPos
-    if IsValid(vehicle) then
-        dropPos = vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50)
-    else
-        dropPos = self:GetPos() + Vector(0, 0, 50)
-    end
-    self:SetPos(dropPos)
-    self:SetAngles(Angle(0, 0, 0))
-
-    local ent = self
-    local savedMats = self.Materials
-    timer.Simple(0.1, function()
-        if not IsValid(ent) then return end
-        ent:SetModel(ent._OrigModel or ConstructionSystem.Config.SmallCrateModel)
-        ent:PhysicsInit(SOLID_VPHYSICS)
-        ent:SetMoveType(MOVETYPE_VPHYSICS)
-        ent:SetSolid(SOLID_VPHYSICS)
-        ent:SetCollisionGroup(COLLISION_GROUP_NONE)
-        ent:SetUseType(SIMPLE_USE)
-        ent:SetNoDraw(false)
-        local phys = ent:GetPhysicsObject()
-        if IsValid(phys) then
-            phys:SetMass(25)
-            phys:EnableMotion(true)
-            phys:Wake()
-        end
-        ent.Materials = savedMats
-        ent:SetNWInt("materials", savedMats)
-        ent._IsUnloading = false
-    end)
-
-    return true
 end
 
 function ENT:Use(activator, caller)
     if not IsValid(activator) or not activator:IsPlayer() then return end
     if self.LastUse and self.LastUse > CurTime() then return end
     self.LastUse = CurTime() + 0.5
-
     if self:GetNWBool("IsLoaded", false) then return end
-
     if not self:CanPlayerUse(activator) then
         DarkRP.notify(activator, 1, 3, "Votre metier n'a pas acces aux caisses de materiaux !")
         return
     end
-
     if self.Materials <= 0 then
         DarkRP.notify(activator, 1, 3, "Caisse vide !")
         return
     end
-
     activator.ActiveCrate = self
     activator:SetNWEntity("ActiveCrate", self)
     DarkRP.notify(activator, 0, 4, "Petite caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
 end
 
-function ENT:Think()
-    if self._IsUnloading then self:NextThink(CurTime() + 0.5) return true end
+---------------------------------------------------------------------------
+-- VÉHICULE
+---------------------------------------------------------------------------
+
+local CARGO_POS = Vector(-80, 0, 45)
+
+function ENT:LoadCrate()
     local parent = self:GetParent()
-    if IsValid(parent) and parent:GetClass() == "gmod_sent_vehicle_fphysics_base" and not self.LoadedVehicle then
-        self:LoadOntoVehicle(parent)
+    if not IsValid(parent) then return end
+    if self:GetNWBool("IsLoaded", false) then return end
+
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(false)
+        phys:Sleep()
     end
-    if self.LoadedVehicle and not IsValid(self.LoadedVehicle) then
-        self.LoadedVehicle = nil
-        self:SetNWBool("IsLoaded", false)
-        self:SetNWEntity("LoadedVehicle", NULL)
-        self:SetParent(nil)
-        self:SetModel(self._OrigModel or ConstructionSystem.Config.SmallCrateModel)
-        self:PhysicsInit(SOLID_VPHYSICS)
-        self:SetMoveType(MOVETYPE_VPHYSICS)
-        self:SetSolid(SOLID_VPHYSICS)
-        self:SetCollisionGroup(COLLISION_GROUP_NONE)
-        self:SetNoDraw(false)
-        local phys = self:GetPhysicsObject()
-        if IsValid(phys) then
-            phys:SetMass(25)
-            phys:EnableMotion(true)
-            phys:Wake()
+
+    self:SetSolid(SOLID_NONE)
+    self:SetMoveType(MOVETYPE_NONE)
+    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+    self:SetLocalPos(CARGO_POS)
+    self:SetLocalAngles(Angle(0, 0, 0))
+
+    self:SetNWBool("IsLoaded", true)
+    self:SetNWEntity("LoadedVehicle", parent)
+end
+
+function ENT:UnloadCrate()
+    if not self:GetNWBool("IsLoaded", false) then return end
+
+    local vehicle = self:GetParent()
+    local savedMats = self.Materials
+
+    self:SetNWBool("IsLoaded", false)
+    self:SetNWEntity("LoadedVehicle", NULL)
+    self:SetParent(nil)
+
+    if IsValid(vehicle) then
+        self:SetPos(vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50))
+    end
+    self:SetAngles(Angle(0, 0, 0))
+
+    self:SetSolid(SOLID_VPHYSICS)
+    self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetCollisionGroup(COLLISION_GROUP_NONE)
+    self:SetUseType(SIMPLE_USE)
+
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(true)
+        phys:Wake()
+    end
+
+    self.Materials = savedMats
+    self:SetNWInt("materials", savedMats)
+end
+
+---------------------------------------------------------------------------
+-- THINK
+---------------------------------------------------------------------------
+
+function ENT:Think()
+    local parent = self:GetParent()
+
+    if IsValid(parent) and parent:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+        if not self:GetNWBool("IsLoaded", false) then
+            self:LoadCrate()
         end
     end
+
+    if self:GetNWBool("IsLoaded", false) and not IsValid(self:GetParent()) then
+        self:UnloadCrate()
+    end
+
     self:NextThink(CurTime() + 0.5)
     return true
 end
+
+---------------------------------------------------------------------------
+-- CLEANUP
+---------------------------------------------------------------------------
 
 function ENT:OnRemove()
     for _, ply in ipairs(player.GetAll()) do
