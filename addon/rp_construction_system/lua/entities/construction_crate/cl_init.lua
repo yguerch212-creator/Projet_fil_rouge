@@ -6,10 +6,10 @@
 include("shared.lua")
 
 function ENT:Draw()
-    -- Invisible quand chargée sur un véhicule
-    if self:GetNWBool("IsLoaded", false) then return end
-
+    -- Pas de 3D2D quand chargée, mais on dessine le modèle
     self:DrawModel()
+
+    if self:GetNWBool("IsLoaded", false) then return end
 
     -- Position: sur le dessus de la caisse, collé
     local obbMax = self:OBBMaxs()

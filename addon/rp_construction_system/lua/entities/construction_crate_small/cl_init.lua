@@ -1,8 +1,8 @@
 include("shared.lua")
 
 function ENT:Draw()
-    if self:GetNWBool("IsLoaded", false) then return end
     self:DrawModel()
+    if self:GetNWBool("IsLoaded", false) then return end
 
     local obbMax = self:OBBMaxs()
     local height = obbMax and obbMax.z or 20

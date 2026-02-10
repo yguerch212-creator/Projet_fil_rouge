@@ -127,16 +127,25 @@ function ENT:LoadOntoVehicle(vehicle)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 
-    -- Attacher au véhicule
+    -- Attacher au véhicule avec placement adapté au modèle
     self:SetParent(vehicle)
-    self:SetLocalPos(Vector(0, 0, 0))
+
+    -- Placement : centré dans le cargo du camion, juste sous le toit
+    local vMins, vMaxs = vehicle:OBBMins(), vehicle:OBBMaxs()
+    local cMins, cMaxs = self:OBBMins(), self:OBBMaxs()
+    local crateH = cMaxs.z - cMins.z
+
+    -- X: centre du cargo (arrière du véhicule, ~60% vers l'arrière)
+    local cargoX = vMins.x * 0.6
+    -- Y: centré
+    local cargoY = 0
+    -- Z: juste sous le toit (toit - hauteur caisse)
+    local cargoZ = vMaxs.z - crateH - 5
+
+    self:SetLocalPos(Vector(cargoX, cargoY, cargoZ))
     self:SetLocalAngles(Angle(0, 0, 0))
 
-    -- Invisible : triple sécurité
-    self:SetNoDraw(true)
-    self:AddEffects(EF_NODRAW)
-    self:SetRenderMode(RENDERMODE_NONE)
-    self:SetColor(Color(0, 0, 0, 0))
+    -- Visible mais sans collision (la caisse reste visible dans le camion)
 
     -- NW vars en dernier (propagation client)
     self:SetNWBool("IsLoaded", true)
@@ -169,11 +178,8 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    -- Visible : retirer tout
-    self:RemoveEffects(EF_NODRAW)
+    -- Visible (déjà visible, mais au cas où)
     self:SetNoDraw(false)
-    self:SetRenderMode(RENDERMODE_NORMAL)
-    self:SetColor(Color(255, 255, 255, 255))
 
     -- Solide
     self:SetSolid(SOLID_VPHYSICS)

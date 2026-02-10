@@ -90,13 +90,17 @@ function ENT:LoadOntoVehicle(vehicle)
     self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 
     self:SetParent(vehicle)
-    self:SetLocalPos(Vector(0, 0, 0))
+
+    local vMins, vMaxs = vehicle:OBBMins(), vehicle:OBBMaxs()
+    local cMins, cMaxs = self:OBBMins(), self:OBBMaxs()
+    local crateH = cMaxs.z - cMins.z
+    local cargoX = vMins.x * 0.6
+    local cargoZ = vMaxs.z - crateH - 5
+
+    self:SetLocalPos(Vector(cargoX, 0, cargoZ))
     self:SetLocalAngles(Angle(0, 0, 0))
 
-    self:SetNoDraw(true)
-    self:AddEffects(EF_NODRAW)
-    self:SetRenderMode(RENDERMODE_NONE)
-    self:SetColor(Color(0, 0, 0, 0))
+    -- Visible mais sans collision
 
     self:SetNWBool("IsLoaded", true)
     self:SetNWEntity("LoadedVehicle", vehicle)
@@ -124,10 +128,7 @@ function ENT:UnloadFromVehicle()
     self:SetPos(dropPos)
     self:SetAngles(Angle(0, 0, 0))
 
-    self:RemoveEffects(EF_NODRAW)
     self:SetNoDraw(false)
-    self:SetRenderMode(RENDERMODE_NORMAL)
-    self:SetColor(Color(255, 255, 255, 255))
 
     self:SetSolid(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
