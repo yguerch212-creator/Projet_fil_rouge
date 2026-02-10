@@ -1,9 +1,11 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Interface Utilisateur (Client)
     Menu principal moderne pour gérer les blueprints
+    Supporte la navigation par dossiers et l'import AdvDupe2
 ---------------------------------------------------------------------------]]
 
 ConstructionSystem.Menu = ConstructionSystem.Menu or {}
+ConstructionSystem.Menu.CurrentDir = ""  -- Dossier courant (relatif à construction_blueprints/)
 
 -- Rayon de sélection client (persiste entre sessions)
 ConstructionSystem.ClientRadius = ConstructionSystem.ClientRadius or (ConstructionSystem.Config.SelectionRadiusDefault or 500)
@@ -23,33 +25,34 @@ local Colors = {
     danger      = Color(239, 68, 68),
     dangerHover = Color(248, 113, 113),
     warning     = Color(245, 158, 11),
+    orange      = Color(249, 115, 22),    -- Pour badges AD2
+    orangeHover = Color(251, 146, 60),
     text        = Color(229, 231, 235),
     textDim     = Color(156, 163, 175),
     textMuted   = Color(107, 114, 128),
     border      = Color(55, 55, 65),
     white       = Color(255, 255, 255),
+    folder      = Color(250, 204, 21),    -- Jaune dossier
 }
 
 -- Fonts custom
 surface.CreateFont("ConstructionTitle", {
-    font = "Roboto", size = 22, weight = 700,
-    antialias = true,
+    font = "Roboto", size = 22, weight = 700, antialias = true,
 })
 surface.CreateFont("ConstructionHeader", {
-    font = "Roboto", size = 16, weight = 600,
-    antialias = true,
+    font = "Roboto", size = 16, weight = 600, antialias = true,
 })
 surface.CreateFont("ConstructionBody", {
-    font = "Roboto", size = 14, weight = 400,
-    antialias = true,
+    font = "Roboto", size = 14, weight = 400, antialias = true,
 })
 surface.CreateFont("ConstructionSmall", {
-    font = "Roboto", size = 12, weight = 400,
-    antialias = true,
+    font = "Roboto", size = 12, weight = 400, antialias = true,
 })
 surface.CreateFont("ConstructionButton", {
-    font = "Roboto", size = 14, weight = 600,
-    antialias = true,
+    font = "Roboto", size = 14, weight = 600, antialias = true,
+})
+surface.CreateFont("ConstructionBadge", {
+    font = "Roboto", size = 11, weight = 700, antialias = true,
 })
 
 ---------------------------------------------------------------------------
@@ -101,56 +104,47 @@ function ConstructionSystem.Menu.Open()
     frame:ShowCloseButton(false)
 
     frame.Paint = function(self, w, h)
-        -- Ombre
         draw.RoundedBox(10, -2, -2, w+4, h+4, Color(0, 0, 0, 80))
-        -- Background
         draw.RoundedBox(8, 0, 0, w, h, Colors.bg)
-        -- Header
         draw.RoundedBoxEx(8, 0, 0, w, 48, Colors.bgLight, true, true, false, false)
-        -- Ligne accent sous le header
         surface.SetDrawColor(Colors.accent)
         surface.DrawRect(0, 48, w, 2)
-        -- Titre
         draw.SimpleText("Construction System", "ConstructionTitle", 20, 24, Colors.white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
         draw.SimpleText("v" .. ConstructionSystem.Config.Version, "ConstructionSmall", w - 50, 24, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
     end
 
-    -- Bouton close custom
+    -- Bouton close
     local btnClose = vgui.Create("DButton", frame)
     btnClose:SetPos(frame:GetWide() - 38, 8)
     btnClose:SetSize(30, 30)
     btnClose:SetText("")
     btnClose.Paint = function(self, w, h)
-        if self:IsHovered() then
-            draw.RoundedBox(4, 0, 0, w, h, Colors.danger)
-        end
+        if self:IsHovered() then draw.RoundedBox(4, 0, 0, w, h, Colors.danger) end
         draw.SimpleText("✕", "ConstructionHeader", w/2, h/2, Colors.textDim, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     end
     btnClose.DoClick = function() frame:Remove() end
 
     ConstructionSystem.Menu.Frame = frame
 
-    -- Container sous le header
+    -- Container
     local container = vgui.Create("DPanel", frame)
     container:SetPos(0, 50)
     container:SetSize(frame:GetWide(), frame:GetTall() - 50)
     container.Paint = function() end
 
-    -- Sidebar (navigation)
+    -- Sidebar
     local sidebar = vgui.Create("DPanel", container)
     sidebar:Dock(LEFT)
     sidebar:SetWide(160)
-    sidebar:DockMargin(0, 0, 0, 0)
     sidebar.Paint = function(self, w, h)
         draw.RoundedBox(0, 0, 0, w, h, Colors.bgLight)
         surface.SetDrawColor(Colors.border)
         surface.DrawRect(w-1, 0, 1, h)
     end
 
-    -- Content area
+    -- Content
     local content = vgui.Create("DPanel", container)
     content:Dock(FILL)
-    content:DockMargin(0, 0, 0, 0)
     content.Paint = function() end
 
     -- Pages
@@ -158,15 +152,10 @@ function ConstructionSystem.Menu.Open()
     local activeTab = nil
 
     local function ShowPage(name)
-        for k, p in pairs(pages) do
-            p:SetVisible(k == name)
-        end
+        for k, p in pairs(pages) do p:SetVisible(k == name) end
         activeTab = name
-        -- Refresh sidebar buttons
-        if sidebar.RefreshButtons then sidebar:RefreshButtons() end
     end
 
-    -- Créer les pages
     pages["blueprints"] = ConstructionSystem.Menu.CreateBlueprintsPage(content)
     pages["save"] = ConstructionSystem.Menu.CreateSavePage(content)
     pages["settings"] = ConstructionSystem.Menu.CreateSettingsPage(content)
@@ -178,7 +167,7 @@ function ConstructionSystem.Menu.Open()
         p:SetVisible(false)
     end
 
-    -- Sidebar buttons
+    -- Sidebar tabs
     local tabs = {
         {name = "blueprints", label = "Blueprints", icon = "▦"},
         {name = "save", label = "Sauvegarder", icon = "💾"},
@@ -186,7 +175,6 @@ function ConstructionSystem.Menu.Open()
         {name = "help", label = "Aide", icon = "?"},
     }
 
-    local tabButtons = {}
     for i, tab in ipairs(tabs) do
         local btn = vgui.Create("DButton", sidebar)
         btn:Dock(TOP)
@@ -202,36 +190,142 @@ function ConstructionSystem.Menu.Open()
             draw.SimpleText(tab.icon .. "  " .. tab.label, "ConstructionButton", 14, h/2, textCol, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
         end
         btn.DoClick = function() ShowPage(tab.name) end
-        tabButtons[tab.name] = btn
     end
-
-    sidebar.RefreshButtons = function() end  -- Les boutons se repaint automatiquement
 
     ShowPage("blueprints")
 end
 
 ---------------------------------------------------------------------------
--- PAGE : BLUEPRINTS
+-- PAGE : BLUEPRINTS (avec navigation dossiers)
 ---------------------------------------------------------------------------
 
 function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
     local page = vgui.Create("DPanel", parent)
     page.Paint = function() end
 
-    -- Header
+    local currentDir = ConstructionSystem.Menu.CurrentDir or ""
+
+    -- Header avec breadcrumb
     local header = vgui.Create("DPanel", page)
     header:Dock(TOP)
     header:SetTall(30)
     header.bpCount = 0
     header.Paint = function(self, w, h)
         draw.SimpleText("Mes Blueprints", "ConstructionHeader", 0, h/2, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-        draw.SimpleText((self.bpCount or 0) .. " sauvegarde(s) locale(s)", "ConstructionSmall", w, h/2, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+        draw.SimpleText((self.bpCount or 0) .. " élément(s)", "ConstructionSmall", w, h/2, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+    end
+
+    -- Breadcrumb / chemin
+    local breadcrumb = vgui.Create("DPanel", page)
+    breadcrumb:Dock(TOP)
+    breadcrumb:SetTall(28)
+    breadcrumb:DockMargin(0, 4, 0, 0)
+
+    local function RefreshBreadcrumb()
+        breadcrumb:Clear()
+
+        -- Bouton racine
+        local rootBtn = vgui.Create("DButton", breadcrumb)
+        rootBtn:Dock(LEFT)
+        rootBtn:SetWide(24)
+        rootBtn:SetText("")
+        rootBtn.Paint = function(self, w, h)
+            local col = (currentDir == "") and Colors.accent or (self:IsHovered() and Colors.accentHover or Colors.textDim)
+            draw.SimpleText("🏠", "ConstructionBody", w/2, h/2, col, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        end
+        rootBtn.DoClick = function()
+            currentDir = ""
+            ConstructionSystem.Menu.CurrentDir = ""
+            ConstructionSystem.Menu.RefreshList()
+        end
+
+        if currentDir ~= "" then
+            local parts = string.Explode("/", currentDir)
+            local accumulated = ""
+            for i, part in ipairs(parts) do
+                -- Séparateur
+                local sep = vgui.Create("DLabel", breadcrumb)
+                sep:Dock(LEFT)
+                sep:SetWide(16)
+                sep:SetFont("ConstructionBody")
+                sep:SetTextColor(Colors.textMuted)
+                sep:SetText(" / ")
+                sep:SetContentAlignment(5)
+
+                -- Bouton dossier
+                accumulated = (i == 1) and part or (accumulated .. "/" .. part)
+                local pathForBtn = accumulated
+
+                local partBtn = vgui.Create("DButton", breadcrumb)
+                partBtn:Dock(LEFT)
+                partBtn:SetText("")
+                surface.SetFont("ConstructionBody")
+                local tw = surface.GetTextSize(part)
+                partBtn:SetWide(tw + 8)
+                partBtn.label = part
+                partBtn.Paint = function(self, w, h)
+                    local isLast = (pathForBtn == currentDir)
+                    local col = isLast and Colors.accent or (self:IsHovered() and Colors.accentHover or Colors.textDim)
+                    draw.SimpleText(self.label, "ConstructionBody", 4, h/2, col, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+                end
+                partBtn.DoClick = function()
+                    currentDir = pathForBtn
+                    ConstructionSystem.Menu.CurrentDir = pathForBtn
+                    ConstructionSystem.Menu.RefreshList()
+                end
+            end
+        end
+    end
+
+    -- Toolbar (nouveau dossier, retour)
+    local toolbar = vgui.Create("DPanel", page)
+    toolbar:Dock(TOP)
+    toolbar:SetTall(30)
+    toolbar:DockMargin(0, 4, 0, 0)
+    toolbar.Paint = function() end
+
+    -- Bouton retour
+    local btnBack = StyledButton(toolbar, "← Retour", Colors.bgPanel, Colors.border)
+    btnBack:Dock(LEFT)
+    btnBack:SetWide(85)
+    btnBack:DockMargin(0, 0, 4, 0)
+    btnBack.DoClick = function()
+        if currentDir == "" then return end
+        local parts = string.Explode("/", currentDir)
+        table.remove(parts)
+        currentDir = table.concat(parts, "/")
+        ConstructionSystem.Menu.CurrentDir = currentDir
+        ConstructionSystem.Menu.RefreshList()
+    end
+
+    -- Bouton nouveau dossier
+    local btnNewFolder = StyledButton(toolbar, "+ Dossier", Colors.bgPanel, Colors.border)
+    btnNewFolder:Dock(LEFT)
+    btnNewFolder:SetWide(90)
+    btnNewFolder:DockMargin(0, 0, 4, 0)
+    btnNewFolder.DoClick = function()
+        Derma_StringRequest(
+            "Nouveau dossier",
+            "Nom du dossier :",
+            "",
+            function(text)
+                if string.Trim(text) == "" then return end
+                local ok, name = ConstructionSystem.LocalBlueprints.CreateFolder(text, currentDir)
+                if ok then
+                    chat.AddText(Colors.success, "[Construction] ", Colors.text, "Dossier '" .. name .. "' créé")
+                    ConstructionSystem.Menu.RefreshList()
+                else
+                    chat.AddText(Colors.danger, "[Construction] " .. tostring(name))
+                end
+            end,
+            nil, "Créer", "Annuler"
+        )
     end
 
     -- Liste
     local listContainer = vgui.Create("DPanel", page)
     listContainer:Dock(FILL)
-    listContainer:DockMargin(0, 8, 0, 8)
+    listContainer:DockMargin(0, 4, 0, 8)
     listContainer.Paint = function(self, w, h)
         draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
     end
@@ -246,9 +340,20 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
         scroll:Clear()
         selectedBP = nil
 
-        local localBlueprints = ConstructionSystem.LocalBlueprints.GetList()
+        -- Refresh breadcrumb
+        RefreshBreadcrumb()
 
-        if #localBlueprints == 0 then
+        -- Dossiers
+        local folders = ConstructionSystem.LocalBlueprints.GetFolders(currentDir)
+        local localBlueprints = ConstructionSystem.LocalBlueprints.GetList(currentDir)
+
+        local totalItems = #folders + #localBlueprints
+
+        if IsValid(header) then
+            header.bpCount = totalItems
+        end
+
+        if totalItems == 0 and currentDir == "" then
             local empty = vgui.Create("DPanel", scroll)
             empty:Dock(TOP)
             empty:SetTall(80)
@@ -256,17 +361,37 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
                 draw.SimpleText("Aucun blueprint sauvegardé", "ConstructionBody", w/2, h/2 - 10, Colors.textMuted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
                 draw.SimpleText("Sélectionnez des props et sauvegardez !", "ConstructionSmall", w/2, h/2 + 10, Colors.textMuted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
             end
-
-            if IsValid(header) then
-                header.bpCount = 0
-            end
             return
         end
 
-        if IsValid(header) then
-            header.bpCount = #localBlueprints
+        -- Afficher les dossiers
+        for _, folderName in ipairs(folders) do
+            local item = vgui.Create("DButton", scroll)
+            item:Dock(TOP)
+            item:DockMargin(2, 2, 2, 0)
+            item:SetTall(40)
+            item:SetText("")
+            item.isFolder = true
+
+            item.Paint = function(self, w, h)
+                local bg = self:IsHovered() and Colors.bgPanel or Color(0,0,0,0)
+                draw.RoundedBox(4, 0, 0, w, h, bg)
+                draw.SimpleText("📁", "ConstructionHeader", 14, h/2, Colors.folder, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+                draw.SimpleText(folderName, "ConstructionButton", 38, h/2, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+            end
+
+            item.DoClick = function()
+                if currentDir == "" then
+                    currentDir = folderName
+                else
+                    currentDir = currentDir .. "/" .. folderName
+                end
+                ConstructionSystem.Menu.CurrentDir = currentDir
+                RefreshList()
+            end
         end
 
+        -- Afficher les blueprints
         for _, bp in ipairs(localBlueprints) do
             local item = vgui.Create("DButton", scroll)
             item:Dock(TOP)
@@ -276,25 +401,40 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
             item.bp = bp
 
             item.Paint = function(self, w, h)
-                local isSelected = (selectedBP and selectedBP.filename == self.bp.filename)
+                local isSelected = (selectedBP and selectedBP.filename == self.bp.filename and selectedBP.format == self.bp.format)
                 local bg = isSelected and Color(Colors.accent.r, Colors.accent.g, Colors.accent.b, 40) or
                            (self:IsHovered() and Colors.bgPanel or Color(0,0,0,0))
                 draw.RoundedBox(4, 0, 0, w, h, bg)
 
-                -- Bord gauche si sélectionné
                 if isSelected then
                     surface.SetDrawColor(Colors.accent)
                     surface.DrawRect(0, 4, 3, h-8)
                 end
 
-                -- Nom
-                draw.SimpleText(self.bp.name, "ConstructionButton", 14, 14, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-                -- Infos
-                local info = self.bp.prop_count .. " props"
-                if self.bp.description and self.bp.description ~= "" then
-                    info = info .. "  •  " .. self.bp.description
+                -- Badge format
+                local badgeX = 14
+                if self.bp.format == "txt" then
+                    draw.RoundedBox(3, badgeX, 8, 28, 14, Colors.orange)
+                    draw.SimpleText("AD2", "ConstructionBadge", badgeX + 14, 15, Colors.white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                    badgeX = badgeX + 34
                 end
-                draw.SimpleText(info, "ConstructionSmall", 14, 32, Colors.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+
+                -- Nom
+                draw.SimpleText(self.bp.name, "ConstructionButton", badgeX, 14, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+
+                -- Infos
+                local info = ""
+                if self.bp.prop_count > 0 then
+                    info = self.bp.prop_count .. " props"
+                end
+                if self.bp.description and self.bp.description ~= "" then
+                    if info ~= "" then info = info .. "  •  " end
+                    info = info .. self.bp.description
+                end
+                if info ~= "" then
+                    draw.SimpleText(info, "ConstructionSmall", badgeX, 32, Colors.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+                end
+
                 -- Date
                 draw.SimpleText(self.bp.created_at or "", "ConstructionSmall", w - 8, h/2, Colors.textMuted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
             end
@@ -305,7 +445,7 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
 
             item.DoDoubleClick = function(self)
                 selectedBP = self.bp
-                ConstructionSystem.Menu.LoadBlueprint(self.bp.filename)
+                ConstructionSystem.Menu.LoadBlueprint(self.bp.filename, currentDir)
             end
         end
     end
@@ -328,7 +468,7 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
             chat.AddText(Colors.warning, "[Construction] Sélectionnez un blueprint")
             return
         end
-        ConstructionSystem.Menu.LoadBlueprint(selectedBP.filename)
+        ConstructionSystem.Menu.LoadBlueprint(selectedBP.filename, currentDir)
     end
 
     local btnDelete = StyledButton(btnBar, "✕ Supprimer", Colors.danger, Colors.dangerHover)
@@ -341,7 +481,7 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
             "Supprimer '" .. selectedBP.name .. "' ?",
             "Confirmation",
             "Supprimer", function()
-                ConstructionSystem.LocalBlueprints.Delete(selectedBP.filename)
+                ConstructionSystem.LocalBlueprints.Delete(selectedBP.filename, currentDir)
                 selectedBP = nil
                 RefreshList()
                 chat.AddText(Colors.success, "[Construction] Blueprint supprimé")
@@ -353,9 +493,7 @@ function ConstructionSystem.Menu.CreateBlueprintsPage(parent)
     local btnRefresh = StyledButton(btnBar, "↻ Actualiser", Colors.bgPanel, Colors.border)
     btnRefresh:Dock(LEFT)
     btnRefresh:SetWide(110)
-    btnRefresh.DoClick = function()
-        RefreshList()
-    end
+    btnRefresh.DoClick = function() RefreshList() end
 
     return page
 end
@@ -368,12 +506,22 @@ function ConstructionSystem.Menu.CreateSavePage(parent)
     local page = vgui.Create("DPanel", parent)
     page.Paint = function() end
 
-    -- Header
     local header = vgui.Create("DPanel", page)
     header:Dock(TOP)
     header:SetTall(30)
     header.Paint = function(self, w, h)
         draw.SimpleText("Sauvegarder un Blueprint", "ConstructionHeader", 0, h/2, Colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+    end
+
+    -- Info dossier courant
+    local folderInfo = vgui.Create("DPanel", page)
+    folderInfo:Dock(TOP)
+    folderInfo:SetTall(24)
+    folderInfo:DockMargin(0, 4, 0, 0)
+    folderInfo.Paint = function(self, w, h)
+        local dir = ConstructionSystem.Menu.CurrentDir or ""
+        local label = (dir == "") and "📁 Racine" or ("📁 " .. dir)
+        draw.SimpleText("Dossier : " .. label, "ConstructionSmall", 0, h/2, Colors.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
     end
 
     -- Compteur de sélection
@@ -383,7 +531,7 @@ function ConstructionSystem.Menu.CreateSavePage(parent)
     selPanel:DockMargin(0, 8, 0, 0)
     selPanel.Paint = function(self, w, h)
         draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
-        local count = ConstructionSystem.Selection.Count()
+        local count = ConstructionSystem.Selection and ConstructionSystem.Selection.Count() or 0
         local maxP = ConstructionSystem.Config.MaxPropsPerBlueprint
         local maxText = maxP > 0 and tostring(maxP) or "∞"
         local col = (maxP > 0 and count >= maxP) and Colors.danger or Colors.accent
@@ -448,7 +596,7 @@ function ConstructionSystem.Menu.CreateSavePage(parent)
             chat.AddText(Colors.danger, "[Construction] ", Colors.text, "Entrez un nom pour le blueprint")
             return
         end
-        if ConstructionSystem.Selection.Count() == 0 then
+        if not ConstructionSystem.Selection or ConstructionSystem.Selection.Count() == 0 then
             chat.AddText(Colors.danger, "[Construction] ", Colors.text, "Sélectionnez des props d'abord (LMB avec l'outil)")
             return
         end
@@ -517,6 +665,18 @@ function ConstructionSystem.Menu.CreateSettingsPage(parent)
         draw.SimpleText("ℹ Le rayon est appliqué immédiatement au prochain clic droit.", "ConstructionSmall", 14, h/2, Colors.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
     end
 
+    -- Info AdvDupe2
+    local ad2Info = vgui.Create("DPanel", page)
+    ad2Info:Dock(TOP)
+    ad2Info:SetTall(65)
+    ad2Info:DockMargin(0, 10, 0, 0)
+    ad2Info.Paint = function(self, w, h)
+        draw.RoundedBox(6, 0, 0, w, h, Colors.bgLight)
+        draw.SimpleText("📦 Compatibilité AdvDupe2", "ConstructionButton", 14, 14, Colors.orange, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText("Copiez vos fichiers .txt depuis garrysmod/data/advdupe2/", "ConstructionSmall", 14, 32, Colors.textDim, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText("vers garrysmod/data/construction_blueprints/ pour les importer.", "ConstructionSmall", 14, 47, Colors.textDim, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+    end
+
     return page
 end
 
@@ -557,11 +717,19 @@ function ConstructionSystem.Menu.CreateHelpPage(parent)
     Line("R (Reload)  →  Vider la sélection")
     Line("Shift+RMB  →  Ouvrir ce menu")
 
-    Section("Blueprints")
+    Section("Blueprints & Dossiers")
     Line("1. Sélectionnez vos props avec l'outil")
     Line("2. Ouvrez le menu → onglet Sauvegarder")
     Line("3. Donnez un nom et sauvegardez")
-    Line("4. Pour charger : onglet Blueprints → sélectionnez → Charger")
+    Line("4. Utilisez '+ Dossier' pour organiser vos blueprints")
+    Line("5. Naviguez dans les dossiers en cliquant dessus")
+
+    Section("Import AdvDupe2")
+    Line("Les fichiers .txt d'AdvDupe2 sont compatibles !")
+    Line("1. Allez dans garrysmod/data/advdupe2/")
+    Line("2. Copiez vos fichiers .txt")
+    Line("3. Collez-les dans garrysmod/data/construction_blueprints/")
+    Line("4. Ils apparaissent avec un badge orange 'AD2'")
 
     Section("Placement")
     Line("Après avoir chargé un blueprint :")
@@ -591,8 +759,8 @@ end
 -- CHARGEMENT BLUEPRINT (local → serveur)
 ---------------------------------------------------------------------------
 
-function ConstructionSystem.Menu.LoadBlueprint(filename)
-    local blueprint = ConstructionSystem.LocalBlueprints.Load(filename)
+function ConstructionSystem.Menu.LoadBlueprint(filename, subdir)
+    local blueprint = ConstructionSystem.LocalBlueprints.Load(filename, subdir)
     if not blueprint then
         chat.AddText(Colors.danger, "[Construction] Blueprint introuvable: " .. tostring(filename))
         return
@@ -607,6 +775,11 @@ function ConstructionSystem.Menu.LoadBlueprint(filename)
         return
     end
 
+    if #compressed > 524288 then  -- 512KB max
+        chat.AddText(Colors.danger, "[Construction] Blueprint trop volumineux (max 512KB)")
+        return
+    end
+
     net.Start("Construction_LoadBlueprint")
     net.WriteUInt(#compressed, 32)
     net.WriteData(compressed, #compressed)
@@ -615,6 +788,14 @@ function ConstructionSystem.Menu.LoadBlueprint(filename)
     if IsValid(ConstructionSystem.Menu.Frame) then
         ConstructionSystem.Menu.Frame:Remove()
     end
+
+    local formatInfo = (blueprint.imported_from == "advdupe2") and " (importé depuis AD2)" or ""
+    chat.AddText(
+        Colors.accent, "[Construction] ",
+        Colors.text, "Chargement de '",
+        Colors.accentHover, blueprint.name or filename,
+        Colors.text, "'" .. formatInfo .. "..."
+    )
 end
 
 ---------------------------------------------------------------------------
@@ -625,4 +806,4 @@ concommand.Add("construction_menu", function()
     ConstructionSystem.Menu.Open()
 end)
 
-print("[Construction] Module cl_menu chargé")
+print("[Construction] Module cl_menu chargé (dossiers + import AD2)")
