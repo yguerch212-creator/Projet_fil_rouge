@@ -13,22 +13,22 @@
 
 ### Méthode 1 : Steam Workshop (recommandé)
 
-1. Abonnez-vous à l'addon sur le Steam Workshop
-2. Ajoutez l'ID à votre collection serveur :
+1. Abonnez-vous à l'addon sur le [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203)
+2. Ajoutez l'ID à votre collection serveur ou forcez le téléchargement :
    ```
    +host_workshop_collection VOTRE_COLLECTION_ID
+   # ou individuellement :
+   +workshop_download_item 4000 3664157203
    ```
 3. Redémarrez le serveur
 
 ### Méthode 2 : Installation manuelle
 
 1. Téléchargez ou clonez le dépôt
-2. Copiez le dossier `rp_construction_system/` dans `garrysmod/addons/`
-3. **Si vous n'utilisez pas MySQL** (cas le plus courant) :
-   - Supprimez `lua/rp_construction/sv_database.lua`
-   - Supprimez `sql/schema.sql`
-   - La section `DB` dans `sh_config.lua` sera ignorée
-4. Redémarrez le serveur
+2. Copiez le dossier `rp_construction_system_workshop/` dans `garrysmod/addons/`
+3. Redémarrez le serveur
+
+> **Note** : La version Workshop ne contient pas de module MySQL — rien à supprimer. Pour la version dev avec MySQL/logging, voir `addon/rp_construction_system_dev/`.
 
 ### Vérification
 

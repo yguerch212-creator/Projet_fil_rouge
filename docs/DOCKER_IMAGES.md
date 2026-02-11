@@ -6,9 +6,16 @@ Toujours maintenir une image Docker stable avec les addons pré-chargés.
 
 ## Images disponibles
 
-| Tag | Description | Date |
-|-----|------------|------|
-| `projetfilrouge/gmod-server:v1.0-base` | Base GMod + DarkRP + 101 addons workshop | 2026-02-07 |
+| Tag | Description | Étape |
+|-----|------------|-------|
+| `projetfilrouge/gmod-server:v1.0-base` | Base GMod + DarkRP + 101 addons workshop | Étape 1 |
+| `projetfilrouge/gmod-server:v1.0-final` | Base finalisée | Étape 1 |
+| `projetfilrouge/gmod-server:v1.1-mysql` | + MySQLOO 64-bit + schéma DB | Étape 2 |
+| `projetfilrouge/gmod-server:v2-stable` | Refonte SWEP + ghosts + caisses | Étape 7 |
+| `projetfilrouge/gmod-server:v2.1-stable` | + Dossiers, AD2 import, UI refonte | Étape 8-9 |
+| `projetfilrouge/gmod-server:v2.2-vehicles` | + Véhicules simfphys, viewmodel Fortnite | Étape 10-11 |
+
+> **Note** : Les tags locaux peuvent encore porter les anciens noms (`jour1-stable`, etc.). Les noms sémantiques ci-dessus sont la convention à suivre.
 
 ## Commandes utiles
 
@@ -25,20 +32,16 @@ docker images | grep projetfilrouge
 ### Restaurer depuis une image stable
 Modifier `docker-compose.yml` :
 ```yaml
-image: projetfilrouge/gmod-server:v1.0-base
-```
-au lieu de :
-```yaml
-image: ceifa/garrysmod:latest
+image: projetfilrouge/gmod-server:v2.2-vehicles
 ```
 
 ### Exporter/Importer une image (backup)
 ```bash
 # Export
-docker save projetfilrouge/gmod-server:v1.0-base | gzip > backups/gmod-v1.0-base.tar.gz
+docker save projetfilrouge/gmod-server:v2.2-vehicles | gzip > backups/gmod-v2.2-vehicles.tar.gz
 
 # Import
-docker load < backups/gmod-v1.0-base.tar.gz
+docker load < backups/gmod-v2.2-vehicles.tar.gz
 ```
 
 ## Workflow

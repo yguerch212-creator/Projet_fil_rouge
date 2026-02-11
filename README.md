@@ -89,7 +89,7 @@ services:
     environment:
       - GAMEMODE=darkrp
       - MAP=falaise_lbrp_v1
-      - ARGS=+host_workshop_collection 2270926906
+      - ARGS=+host_workshop_collection 2270926906 +workshop_download_item 4000 3664157203
     depends_on: [mysql]
 
   mysql:
@@ -532,14 +532,11 @@ ProjetFilRouge/
 
 ## 📸 Captures d'écran
 
-> Les captures d'écran sont disponibles dans le dossier `screenshots/`.
+<p align="center">
+  <img src="screenshots/icon_512x512.png" alt="RP Construction System" width="256">
+</p>
 
-- **SWEP HUD** — Le HUD en bas à droite affiche le compteur de props sélectionnés et les raccourcis
-- **Menu Blueprints** — Interface dark theme avec sidebar, liste des blueprints, badges AD2 pour les imports
-- **Ghost Placement** — Les fantômes holographiques bleus translucides placés sur la map, en attente de matérialisation
-- **Caisse de matériaux** — Le modèle WW2 `dun_wood_crate_03.mdl` avec la jauge de matériaux au-dessus
-- **Véhicule chargé** — Un camion simfphys WW2 avec une caisse attachée à l'arrière
-- **Construction collaborative** — Plusieurs joueurs matérialisant des fantômes avec leurs caisses
+> 🔗 **[Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203)** — Addon publié (ID 3664157203)
 
 ---
 
@@ -549,14 +546,14 @@ Ce Projet Fil Rouge m'a permis de couvrir un spectre technique large, de l'infra
 
 ### Réalisations
 - ✅ Infrastructure Docker complète et reproductible
-- ✅ Addon standalone v2.2 prêt pour le Steam Workshop
+- ✅ Addon v2.2 publié sur le [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203)
 - ✅ Architecture client/serveur sécurisée
 - ✅ Système de construction collaborative fonctionnel
 - ✅ Intégration véhicules simfphys
 - ✅ Documentation technique exhaustive
+- ✅ Deux versions : dev (MySQL + logging) et workshop (standalone)
 
 ### Perspectives
-- 🔜 Publication sur le Steam Workshop
 - 🔜 Système de coûts configurable (matériaux par prop)
 - 🔜 Support étendu des véhicules LVS
 - 🔜 Système de partage de blueprints entre joueurs

@@ -63,3 +63,30 @@
 - KeyPress/Think ne détectent pas IN_USE → client Think + input.IsKeyDown(KEY_E) + net message
 - NWEntity sync pour ActiveCrate (client ne connaissait pas l'état serveur)
 - Props ghostés au chargement → frozen par défaut
+
+## Étape 6 - Refonte v2.1 : Dossiers, AD2, UI
+- Support des sous-dossiers pour les blueprints
+- Import AdvDupe2 avec décodeur embarqué (`cl_ad2_decoder.lua`)
+- Refonte UI : dark theme, sidebar, breadcrumb, badges AD2
+- Modèles de caisses custom (WW2 content pack)
+- Petite caisse (`construction_crate_small`, 15 matériaux)
+- Image Docker : `v2.1-stable`
+
+## Étape 7 - Véhicules simfphys v2.2
+- Module véhicules : `sv_vehicles.lua` (serveur) + `cl_vehicles.lua` (client)
+- Détection automatique simfphys, LVS, Source vehicles
+- `SetParent()` + `EnableMotion(false)` pour l'attachement
+- Offsets calibrés par modèle (Opel Blitz, CCKW 6x6)
+- Net message `Construction_VehicleReload` (R = décharger)
+- `PlayerBindPress` + `"+reload"` côté client
+- HUD véhicule (instructions charger/décharger)
+- Résolution bugs : `SetParent(nil)` restore position, ghost physics, `SWEP:Reload()` avec `ClipSize=-1`
+- Image Docker : `v2.2-vehicles`
+
+## Étape 8 - Publication Workshop
+- Création du `addon.json` pour gmad
+- Suppression des fichiers `.sw.vtx` (non supportés par gmad)
+- Compilation GMA et publication sur le Steam Workshop (ID 3664157203)
+- Viewmodel Fortnite Builder (`v_fortnite_builder.mdl`) fonctionnel côté client via Workshop
+- Deux versions de l'addon : dev (MySQL) et workshop (standalone)
+- Ajout de l'icône 512x512 (PNG + JPG)

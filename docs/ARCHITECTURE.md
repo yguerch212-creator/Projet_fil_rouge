@@ -67,7 +67,9 @@ rp_construction_system/
 │   │   ├── cl_ad2_decoder.lua     — Décodeur binaire AD2 rev4/5 embarqué
 │   │   ├── cl_menu.lua            — Interface Derma complète (sidebar, breadcrumb)
 │   │   ├── cl_placement.lua       — ClientsideModel preview, rotation, hauteur
-│   │   └── cl_selection.lua       — Rendu halos bleus, HUD compteur
+│   │   ├── cl_selection.lua       — Rendu halos bleus, HUD compteur
+│   │   ├── cl_vehicles.lua        — HUD véhicule, bind reload client
+│   │   └── sv_vehicles.lua        — Attach/detach caisses sur véhicules simfphys/LVS
 │   ├── entities/
 │   │   ├── construction_ghost/    — Fantôme holographique (SOLID_NONE, bleu)
 │   │   │   ├── shared.lua
