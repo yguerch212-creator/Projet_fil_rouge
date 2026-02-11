@@ -10,6 +10,7 @@ Conception, développement et déploiement d'un addon Garry's Mod professionnel 
 
 - [Objectifs du projet](#-objectifs-du-projet)
 - [Infrastructure Docker](#-infrastructure-docker)
+- [Deux versions de l'addon](#-deux-versions-de-laddon)
 - [Architecture technique](#-architecture-technique)
 - [Fonctionnalités de l'addon v2.2](#-fonctionnalités-de-laddon-v22)
 - [Problèmes rencontrés et solutions](#-problèmes-rencontrés-et-solutions)
@@ -225,12 +226,11 @@ Les démarrages suivants utilisent cette image commitée et sont quasi-instantan
 
 **Cause** : En développement avec bind mounts Docker (`./addons:/garrysmod/addons`), le serveur GMod ne sert pas correctement les fichiers custom aux clients. Le système de téléchargement FastDL/resource.AddFile s'attend à ce que les fichiers soient dans le filesystem natif du container, pas dans un volume monté.
 
-**Solution** : En dev, utiliser un modèle fallback disponible dans le jeu de base (`c_slam.mdl`). En production (Workshop), les modèles sont téléchargés automatiquement par Steam et `resource.AddFile` n'est pas nécessaire :
-```lua
--- Dev: fallback sur c_slam car le client ne reçoit pas les fichiers via bind mount
-SWEP.ViewModel = "models/weapons/c_slam.mdl"
--- Workshop: v_fortnite_builder.mdl sera automatiquement disponible
-```
+**Solution** : Deux approches selon le contexte :
+- **En développement** (bind mount) : utiliser un modèle fallback du jeu de base (`c_slam.mdl`)
+- **En production** (Workshop) : pointer sur le vrai modèle (`v_fortnite_builder.mdl`), téléchargé automatiquement par Steam
+
+La version finale utilise le modèle Workshop. L'addon est publié sur le Steam Workshop (ID 3664157203) avec `+workshop_download_item 4000 3664157203` dans les arguments serveur, ce qui garantit que les clients reçoivent les fichiers custom.
 
 ### 5. `SWEP:Reload()` non appelé côté serveur avec `ClipSize = -1`
 
@@ -420,6 +420,16 @@ Même approche pour `CanTool`, `GravGunPickupAllowed`, etc.
 - Nettoyage du code, commentaires
 - Mise à jour complète de la documentation v2.2
 
+### Étape 12 — Publication Workshop & Packaging
+- Création du fichier `addon.json` requis par gmad
+- Suppression des fichiers `.sw.vtx` (non supportés par la whitelist gmad)
+- Compilation du `.gma` via `gmad.exe create`
+- Publication sur le Steam Workshop via `gmpublish.exe` (ID [3664157203](https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203))
+- Création de l'icône 512x512 pour la page Workshop
+- Séparation en deux versions : **dev** (MySQL, logging DB) et **workshop** (standalone)
+- Basculement du viewmodel serveur vers `v_fortnite_builder.mdl` (fonctionnel via Workshop)
+- Ajout de `+workshop_download_item 4000 3664157203` dans les arguments Docker
+
 ---
 
 ## 🔒 Sécurité
@@ -494,6 +504,9 @@ ProjetFilRouge/
 │   ├── amelioration/                #    Compte-rendu d'amélioration
 │   ├── backup/                      #    Plan de sauvegarde
 │   └── cdc/                         #    Cahier des charges
+├── screenshots/                     # 📸 Icône et captures
+│   ├── icon_512x512.png             #    Icône addon (PNG)
+│   └── icon_512x512.jpg             #    Icône addon (JPG Workshop)
 └── README.md                        #    Ce fichier
 ```
 
@@ -514,6 +527,7 @@ ProjetFilRouge/
 | Map | falaise_lbrp_v1 | Workshop ID 3174802588 |
 | Workshop | Collection 2270926906 | ~101 addons |
 | Véhicules | simfphys | Support LVS documenté |
+| Addon Workshop | Steam Workshop | ID [3664157203](https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203) |
 
 ---
 
