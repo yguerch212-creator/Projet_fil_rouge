@@ -1,0 +1,13 @@
+{
+	"title": "RP Construction System (Dev)",
+	"type": "ServerContent",
+	"tags": ["roleplay", "build"],
+	"ignore": [
+		"*.psd",
+		"*.xcf",
+		"*.svn*",
+		"*.git*",
+		"README.md",
+		"sql/*"
+	]
+}
