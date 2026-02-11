@@ -1,6 +1,12 @@
-# 🏗️ RP Construction System — Addon Garry's Mod
+# 🏗️ RP Construction System — Copie Docker (Dev)
 
-**Version 2.2** | DarkRP Compatible | Standalone Workshop-Ready
+**Version 2.2-dev** | Copie de travail montée dans le container Docker
+
+> 📂 **Ce dossier est une copie de travail** de [`addon/rp_construction_system_dev/`](../../../addon/rp_construction_system_dev/), montée via bind mount dans le container Docker GMod. Les modifications de développement se font ici et sont synchronisées vers le dossier `addon/`.
+>
+> Pour la documentation complète, consultez les README dans `addon/` :
+> - [Version Dev](../../../addon/rp_construction_system_dev/README.md) — MySQL + logging DB
+> - [Version Workshop](../../../addon/rp_construction_system_workshop/README.md) — Standalone, prête pour le Steam Workshop
 
 Système de construction collaborative pour serveurs Garry's Mod DarkRP. Un Constructeur sélectionne des props, les sauvegarde en blueprint, les place comme fantômes holographiques, puis n'importe quel joueur peut matérialiser ces fantômes avec des caisses de matériaux. Les caisses peuvent être transportées en véhicule simfphys pour la logistique.
 

@@ -103,6 +103,25 @@ services:
 
 ---
 
+## 📦 Deux versions de l'addon
+
+L'addon existe en **deux versions** dans le dossier `addon/`, adaptées à des usages différents :
+
+| | **Dev** (`rp_construction_system_dev/`) | **Workshop** (`rp_construction_system_workshop/`) |
+|---|---|---|
+| **Usage** | Serveur Docker avec bind mount | Steam Workshop ou installation manuelle |
+| **MySQL** | ✅ Intégré (MySQLOO, logging DB) | ❌ Aucune dépendance externe |
+| **Logging** | Console + base de données | Console uniquement |
+| **Auto-config** | `sv_admin_setup.lua` (superadmin) | Absent |
+| **Viewmodel** | `c_slam.mdl` (fallback dev\*) | `v_fortnite_builder.mdl` |
+| **Schéma SQL** | `sql/schema.sql` fourni | Absent |
+
+\* En dev Docker avec bind mount, les fichiers custom (modèles) ne sont pas servis aux clients par `resource.AddFile`. Le viewmodel Fortnite Builder n'est disponible côté client qu'en version Workshop.
+
+Le dossier `docker/addons/rp_construction_system/` est une **copie de travail** de la version dev, montée directement dans le container Docker.
+
+---
+
 ## 🏗️ Architecture technique
 
 ```
@@ -448,14 +467,14 @@ Config.BlacklistedEntities = {
 
 ```
 ProjetFilRouge/
-├── addon/rp_construction_system_dev/    # 🎯 Addon standalone (Workshop-ready)
-│   ├── lua/
-│   │   ├── autorun/                 #    Points d'entrée (init)
-│   │   ├── rp_construction/         #    Modules (13 fichiers)
-│   │   ├── entities/                #    3 entités custom
-│   │   └── weapons/                 #    SWEP weapon_construction
-│   ├── sql/schema.sql               #    Schéma DB optionnel
-│   └── README.md                    #    Documentation addon
+├── addon/                               # 🎯 Addon en deux versions
+│   ├── rp_construction_system_dev/      #    Version développement (MySQL + logging DB)
+│   │   ├── lua/                         #    Code source complet + sv_database.lua
+│   │   ├── sql/schema.sql               #    Schéma MySQL
+│   │   └── README.md                    #    Doc version dev
+│   └── rp_construction_system_workshop/ #    Version Workshop (standalone, sans MySQL)
+│       ├── lua/                         #    Code source allégé
+│       └── README.md                    #    Doc version workshop
 ├── docker/                          # 🐳 Environnement Docker
 │   ├── docker-compose.yml           #    Orchestration GMod + MySQL
 │   ├── addons/                      #    Addons montés (copie de dev)
@@ -502,7 +521,8 @@ ProjetFilRouge/
 
 | Document | Description |
 |----------|-------------|
-| [README Addon](addon/rp_construction_system_dev/README.md) | Documentation standalone de l'addon (Workshop-ready) |
+| [README Addon Dev](addon/rp_construction_system_dev/README.md) | Documentation version développement (MySQL intégré) |
+| [README Addon Workshop](addon/rp_construction_system_workshop/README.md) | Documentation version Workshop (standalone) |
 | [Architecture](docs/ARCHITECTURE.md) | Architecture technique détaillée, flux de données, net messages |
 | [Guide d'installation](docs/GUIDE_INSTALLATION.md) | Guide admin serveur (Docker, DarkRP, configuration) |
 | [Guide d'utilisation](docs/GUIDE_UTILISATEUR.md) | Guide joueur (contrôles, blueprints, caisses, véhicules) |

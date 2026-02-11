@@ -1,8 +1,22 @@
-# 🏗️ RP Construction System — Addon Garry's Mod
+# 🏗️ RP Construction System — Version Développement
 
-**Version 2.2** | DarkRP Compatible | Standalone Workshop-Ready
+**Version 2.2-dev** | DarkRP Compatible | MySQL + Logging intégrés
+
+> ⚠️ **Ceci est la version développement.** Elle inclut l'intégration MySQL (MySQLOO), le module de logging en base de données, et le script d'auto-configuration admin. Pour la version allégée prête pour le Workshop (sans dépendance MySQL), voir [`addon/rp_construction_system_workshop/`](../rp_construction_system_workshop/).
 
 Système de construction collaborative pour serveurs Garry's Mod DarkRP. Un Constructeur sélectionne des props, les sauvegarde en blueprint, les place comme fantômes holographiques, puis n'importe quel joueur peut matérialiser ces fantômes avec des caisses de matériaux. Les caisses peuvent être transportées en véhicule simfphys pour la logistique.
+
+### Différences avec la version Workshop
+
+| | Dev (ce dossier) | Workshop |
+|---|---|---|
+| MySQL / MySQLOO | ✅ Inclus (`sv_database.lua`) | ❌ Retiré |
+| Logging en DB | ✅ Actions loguées en base | ❌ Logs console uniquement |
+| `sv_admin_setup.lua` | ✅ Auto-config superadmin | ❌ Retiré |
+| `sql/schema.sql` | ✅ Schéma fourni | ❌ Absent |
+| `sh_config.lua` | Section DB configurée | Section DB absente |
+| Viewmodel | `c_slam.mdl` (fallback dev) | `v_fortnite_builder.mdl` (Workshop) |
+| Destination | Serveur Docker avec bind mount | Steam Workshop / `garrysmod/addons/` |
 
 ---
 
