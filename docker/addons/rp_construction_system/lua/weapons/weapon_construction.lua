@@ -28,11 +28,9 @@ SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = true
 
 -- Viewmodel Fortnite Builder (plan d'architecte)
--- Les modèles custom sont inclus dans l'addon (models/weapons/v_fortnite_builder.mdl)
--- Ils s'affichent automatiquement quand l'addon est installé via Workshop
--- En dev (bind mount), fallback sur c_slam car le client ne reçoit pas les fichiers
-SWEP.ViewModel = "models/weapons/c_slam.mdl"
-SWEP.WorldModel = "models/weapons/w_slam.mdl"
+-- Modèle fourni par l'addon Workshop (ID 3664157203)
+SWEP.ViewModel = "models/weapons/v_fortnite_builder.mdl"
+SWEP.WorldModel = "models/weapons/w_fortnite_builder.mdl"
 SWEP.UseHands = true
 SWEP.HoldType = "slam"
 
