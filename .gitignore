@@ -28,7 +28,7 @@ references/
 # Binaires
 docker/lua-bin/*.dll
 
-# Screenshots dev
-screenshots/
+# Screenshots dev (raw)
+# screenshots/ folder is now tracked for addon icon
 .gitlab-ci.yml
 *.sw.vtx
