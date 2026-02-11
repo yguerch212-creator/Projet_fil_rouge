@@ -97,13 +97,22 @@ Les grosses caisses sont transportables en véhicule simfphys.
 
 ### Manuel
 1. Téléchargez/clonez ce dépôt
-2. Copiez le dossier `rp_construction_system` dans `garrysmod/addons/`
-3. **Si vous n'utilisez pas MySQL** (recommandé pour la plupart des serveurs) :
-   - Supprimez `lua/rp_construction/sv_database.lua` (module MySQLOO)
-   - Supprimez `sql/schema.sql` (schéma DB)
-   - La section `DB` dans `sh_config.lua` sera simplement ignorée
-4. Redémarrez le serveur
-5. Assurez-vous que les joueurs ont le content pack pour les modèles de caisses
+2. Copiez le dossier `rp_construction_system_workshop` dans `garrysmod/addons/`
+3. Redémarrez le serveur
+4. Assurez-vous que les joueurs ont le content pack pour les modèles de caisses
+
+> **Note** : Cette version Workshop ne contient pas de module MySQL — aucun fichier à supprimer.
+
+### Compilation GMA (pour publication Workshop)
+
+Pour créer le fichier `.gma` nécessaire à la publication Workshop :
+
+```powershell
+# Depuis le dossier bin de Garry's Mod
+.\gmad.exe create -folder "chemin\vers\rp_construction_system_workshop" -out "chemin\vers\rp_construction_system.gma"
+```
+
+> **Important** : Les fichiers `.sw.vtx` ne sont pas supportés par gmad et ont été retirés du projet. Si gmad signale des fichiers "Not allowed by whitelist", supprimez-les du dossier avant de recompiler.
 
 ---
 
@@ -520,13 +529,22 @@ Large crates are transportable in simfphys vehicles.
 
 ### Manual
 1. Download/clone this repository
-2. Copy the `rp_construction_system` folder to `garrysmod/addons/`
-3. **If you don't use MySQL** (recommended for most servers):
-   - Delete `lua/rp_construction/sv_database.lua` (MySQLOO module)
-   - Delete `sql/schema.sql` (DB schema)
-   - The `DB` section in `sh_config.lua` will simply be ignored
-4. Restart the server
-5. Ensure players have the content pack for crate models
+2. Copy the `rp_construction_system_workshop` folder to `garrysmod/addons/`
+3. Restart the server
+4. Ensure players have the content pack for crate models
+
+> **Note**: This Workshop version has no MySQL module — nothing to remove.
+
+### GMA Compilation (for Workshop publishing)
+
+To create the `.gma` file required for Workshop publishing:
+
+```powershell
+# From Garry's Mod bin folder
+.\gmad.exe create -folder "path\to\rp_construction_system_workshop" -out "path\to\rp_construction_system.gma"
+```
+
+> **Important**: `.sw.vtx` files are not supported by gmad and have been removed from the project.
 
 ---
 
