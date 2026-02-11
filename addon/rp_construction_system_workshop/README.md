@@ -91,8 +91,8 @@ Les grosses caisses sont transportables en véhicule simfphys.
 ## 📦 Installation
 
 ### Workshop (recommandé)
-1. Abonnez-vous à l'addon sur le Steam Workshop
-2. Ajoutez l'ID Workshop à votre collection serveur via `host_workshop_collection`
+1. Abonnez-vous à l'addon sur le [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203)
+2. Ajoutez l'ID Workshop (`3664157203`) à votre collection serveur ou via `host_workshop_collection`
 3. Le contenu (modèles des caisses) nécessite le [content pack WW2](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539)
 
 ### Manuel
@@ -523,8 +523,8 @@ Large crates are transportable in simfphys vehicles.
 ## 📦 Installation
 
 ### Workshop (recommended)
-1. Subscribe to the addon on Steam Workshop
-2. Add the Workshop ID to your server collection via `host_workshop_collection`
+1. Subscribe to the addon on the [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203)
+2. Add the Workshop ID (`3664157203`) to your server collection or via `host_workshop_collection`
 3. Content (crate models) requires the [WW2 content pack](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539)
 
 ### Manual
