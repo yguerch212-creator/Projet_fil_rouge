@@ -1,0 +1,193 @@
+AddCSLuaFile("shared.lua")
+AddCSLuaFile("cl_init.lua")
+
+include("shared.lua")
+
+function ENT:Initialize()
+    self:SetModel(ConstructionSystem.Config.SmallCrateModel)
+    self:PhysicsInit(SOLID_VPHYSICS)
+    self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetSolid(SOLID_VPHYSICS)
+    self:SetUseType(SIMPLE_USE)
+
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:Wake()
+        phys:SetMass(25)
+    end
+
+    self.Materials = ConstructionSystem.Config.SmallCrateMaxMaterials
+    self:SetNWInt("materials", self.Materials)
+    self:SetNWInt("max_materials", ConstructionSystem.Config.SmallCrateMaxMaterials)
+end
+
+---------------------------------------------------------------------------
+-- PERMISSIONS
+---------------------------------------------------------------------------
+
+hook.Add("PhysgunPickup", "Construction_SmallCratePhysgun", function(ply, ent)
+    if ent:GetClass() ~= "construction_crate_small" then return end
+    if ent:GetNWBool("IsLoaded", false) then return false end
+    local owner = ent:CPPIGetOwner()
+    if IsValid(owner) and owner == ply then return true end
+    if ply:IsAdmin() then return true end
+end)
+
+hook.Add("CanTool", "Construction_SmallCrateTool", function(ply, tr, tool)
+    if not IsValid(tr.Entity) or tr.Entity:GetClass() ~= "construction_crate_small" then return end
+    local ent = tr.Entity
+    local owner = ent:CPPIGetOwner()
+    local isOwner = (IsValid(owner) and owner == ply) or ply:IsAdmin()
+    if tool == "remover" and isOwner then return true end
+    if not isOwner then return false end
+end)
+
+hook.Add("GravGunPickupAllowed", "Construction_SmallCrateGravgun", function(ply, ent)
+    if ent:GetClass() ~= "construction_crate_small" then return end
+    if ent:GetNWBool("IsLoaded", false) then return false end
+    return true
+end)
+
+---------------------------------------------------------------------------
+-- FONCTIONS DE BASE
+---------------------------------------------------------------------------
+
+function ENT:GetRemainingMats()
+    return self.Materials or 0
+end
+
+function ENT:UseMaterial()
+    if self.Materials <= 0 then return false end
+    self.Materials = self.Materials - 1
+    self:SetNWInt("materials", self.Materials)
+    if self.Materials <= 0 then
+        timer.Simple(0.5, function()
+            if IsValid(self) then self:Remove() end
+        end)
+    end
+    return true
+end
+
+function ENT:CanPlayerUse(ply)
+    local allowed = ConstructionSystem.Config.CrateAllowedJobs
+    if not allowed then return true end
+    for _, jobId in ipairs(allowed) do
+        if ply:Team() == jobId then return true end
+    end
+    return false
+end
+
+function ENT:Use(activator, caller)
+    if not IsValid(activator) or not activator:IsPlayer() then return end
+    if self.LastUse and self.LastUse > CurTime() then return end
+    self.LastUse = CurTime() + 0.5
+    if self:GetNWBool("IsLoaded", false) then return end
+    if not self:CanPlayerUse(activator) then
+        DarkRP.notify(activator, 1, 3, "Votre metier n'a pas acces aux caisses de materiaux !")
+        return
+    end
+    if self.Materials <= 0 then
+        DarkRP.notify(activator, 1, 3, "Caisse vide !")
+        return
+    end
+    activator.ActiveCrate = self
+    activator:SetNWEntity("ActiveCrate", self)
+    DarkRP.notify(activator, 0, 4, "Petite caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
+end
+
+---------------------------------------------------------------------------
+-- VÉHICULE
+---------------------------------------------------------------------------
+
+local CARGO_POS = Vector(-80, 0, 45)
+
+function ENT:LoadCrate()
+    local parent = self:GetParent()
+    if not IsValid(parent) then return end
+    if self:GetNWBool("IsLoaded", false) then return end
+
+    local phys = self:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:EnableMotion(false)
+        phys:Sleep()
+    end
+
+    self:SetSolid(SOLID_NONE)
+    self:SetMoveType(MOVETYPE_NONE)
+    self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+    self:SetLocalPos(CARGO_POS)
+    self:SetLocalAngles(Angle(0, 0, 0))
+
+    self:SetNWBool("IsLoaded", true)
+    self:SetNWEntity("LoadedVehicle", parent)
+end
+
+function ENT:UnloadCrate()
+    if not self:GetNWBool("IsLoaded", false) then return end
+
+    local vehicle = self:GetParent()
+    local savedMats = self.Materials
+
+    local dropPos = self:GetPos() + Vector(0, 0, 50)
+    if IsValid(vehicle) then
+        dropPos = vehicle:GetPos() + vehicle:GetRight() * 150 + Vector(0, 0, 50)
+    end
+
+    self:SetNWBool("IsLoaded", false)
+    self:SetNWEntity("LoadedVehicle", NULL)
+    self:SetParent(nil)
+
+    self:SetSolid(SOLID_VPHYSICS)
+    self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetCollisionGroup(COLLISION_GROUP_NONE)
+    self:SetUseType(SIMPLE_USE)
+
+    local ent = self
+    timer.Simple(0, function()
+        if not IsValid(ent) then return end
+        ent:SetPos(dropPos)
+        ent:SetAngles(Angle(0, 0, 0))
+        local phys = ent:GetPhysicsObject()
+        if IsValid(phys) then
+            phys:EnableMotion(true)
+            phys:Wake()
+        end
+    end)
+
+    self.Materials = savedMats
+    self:SetNWInt("materials", savedMats)
+end
+
+---------------------------------------------------------------------------
+-- THINK
+---------------------------------------------------------------------------
+
+function ENT:Think()
+    local parent = self:GetParent()
+
+    if IsValid(parent) and parent:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+        if not self:GetNWBool("IsLoaded", false) then
+            self:LoadCrate()
+        end
+    end
+
+    if self:GetNWBool("IsLoaded", false) and not IsValid(self:GetParent()) then
+        self:UnloadCrate()
+    end
+
+    self:NextThink(CurTime() + 0.5)
+    return true
+end
+
+---------------------------------------------------------------------------
+-- CLEANUP
+---------------------------------------------------------------------------
+
+function ENT:OnRemove()
+    for _, ply in ipairs(player.GetAll()) do
+        if IsValid(ply) and ply.ActiveCrate == self then
+            ply.ActiveCrate = nil
+            ply:SetNWEntity("ActiveCrate", NULL)
+        end
+    end
+end

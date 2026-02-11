@@ -448,7 +448,7 @@ Config.BlacklistedEntities = {
 
 ```
 ProjetFilRouge/
-├── addon/rp_construction_system/    # 🎯 Addon standalone (Workshop-ready)
+├── addon/rp_construction_system_dev/    # 🎯 Addon standalone (Workshop-ready)
 │   ├── lua/
 │   │   ├── autorun/                 #    Points d'entrée (init)
 │   │   ├── rp_construction/         #    Modules (13 fichiers)
@@ -502,7 +502,7 @@ ProjetFilRouge/
 
 | Document | Description |
 |----------|-------------|
-| [README Addon](addon/rp_construction_system/README.md) | Documentation standalone de l'addon (Workshop-ready) |
+| [README Addon](addon/rp_construction_system_dev/README.md) | Documentation standalone de l'addon (Workshop-ready) |
 | [Architecture](docs/ARCHITECTURE.md) | Architecture technique détaillée, flux de données, net messages |
 | [Guide d'installation](docs/GUIDE_INSTALLATION.md) | Guide admin serveur (Docker, DarkRP, configuration) |
 | [Guide d'utilisation](docs/GUIDE_UTILISATEUR.md) | Guide joueur (contrôles, blueprints, caisses, véhicules) |
