@@ -100,7 +100,7 @@ net.Receive("Construction_MaterializeGhost", function(len, ply)
 
     -- Caisse
     local crate = ply.ActiveCrate
-    if not IsValid(crate) or crate:GetClass() ~= "construction_crate" then
+    if not IsValid(crate) or (crate:GetClass() ~= "construction_crate" and crate:GetClass() ~= "construction_crate_small") then
         ply.ActiveCrate = nil
         return
     end

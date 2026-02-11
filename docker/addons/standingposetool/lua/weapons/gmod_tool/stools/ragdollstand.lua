@@ -1,0 +1,98 @@
+
+TOOL.Category		= "Poser"
+TOOL.Name			= "Stand Pose"
+TOOL.Command		= nil
+TOOL.ConfigName		= nil
+
+TOOL.ClientConVar["use_bbox"] = 0
+
+function TOOL:LeftClick(tr)
+	if self:GetStage() == 0 then
+
+		if !IsValid(tr.Entity) then return false end
+		if tr.Entity:GetClass() != "prop_ragdoll" then return false end
+
+		if CLIENT then return true end
+			self.SelectedEnt = tr.Entity
+			self:SetStage(1)
+			return true
+		else
+
+		local rag = self.SelectedEnt
+		if !IsValid(rag) then
+			self:SetStage(0)
+			return true
+		end
+
+		local hpos = tr.HitPos
+		local ent = ents.Create("prop_dynamic")
+		ent:SetModel(rag:GetModel())
+		ent:SetPos(hpos)
+		local min = ent:WorldSpaceAABB()
+		local diff = hpos.z - min.z
+		if self:GetClientNumber("use_bbox") == 1 then
+			ent:SetPos(hpos + Vector(0, 0, diff))
+		end
+		local angle = (hpos - self:GetOwner():GetPos()):Angle()
+		ent:SetAngles(Angle(0, angle.y - 180, 0))
+		ent:Spawn()
+
+		if CLIENT then return true end
+		local PhysObjects = rag:GetPhysicsObjectCount() - 1
+		if game.SinglePlayer() then
+			timer.Simple(0.1, function()
+				net.Start("StandPoser_Client")
+				net.WriteEntity(rag)
+				net.WriteEntity(ent)
+				net.WriteInt(PhysObjects, 8)
+				net.Send(self:GetOwner())
+			end)
+		else -- if we're in multiplayer, we revert back to the old way stand pose worked, otherwise stuff will get weird
+			for i = 0, PhysObjects do
+				local phys = rag:GetPhysicsObjectNum(i)
+				local b = rag:TranslatePhysBoneToBone(i)
+				local pos, ang = ent:GetBonePosition(b)
+				phys:EnableMotion(true)
+				phys:Wake()
+				phys:SetPos(pos)
+				phys:SetAngles(ang)
+				if string.sub(rag:GetBoneName(b), 1, 4) == "prp_" then
+					phys:EnableMotion(true)
+					phys:Wake()
+				else
+					phys:EnableMotion(false)
+					phys:Wake()
+				end
+			end
+		ent:Remove()
+		end
+		self:SetStage(0)
+		return true
+
+	end
+end
+
+function TOOL:RightClick(tr)
+	if self:GetStage() == 1 then
+		self:SetStage(0)
+		return true
+	end
+	return false
+end
+
+if CLIENT then
+
+language.Add("tool.ragdollstand.name", "Stand Pose")
+language.Add("tool.ragdollstand.desc", "Position ragdolls in a standing pose.")
+language.Add("tool.ragdollstand.0", "Left Click to select a ragdoll.")
+language.Add("tool.ragdollstand.1", "Now click on a position where you want the ragdoll to stand or Right Click to cancel.")
+
+function TOOL.BuildCPanel(CPanel)
+	local CB = vgui.Create("DCheckBoxLabel", CPanel)
+	CB:SetText("Use Bounding Box")
+	CB:SetConVar("ragdollstand_use_bbox")
+	CB:SetDark(true)
+	CPanel:AddItem(CB)
+end
+
+end

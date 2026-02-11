@@ -26,7 +26,7 @@ services:
       - MAP=falaise_lbrp_v1
       - MAXPLAYERS=2
       - AUTHKEY=04FBFFDF7B45771EFA25FE3A5713C66D
-      - ARGS=+host_workshop_collection 2270926906 +workshop_download_item 4000 3664157203
+      - ARGS=+host_workshop_collection 2270926906 +workshop_download_item 4000 3664157203 +workshop_download_item 4000 773402917 +workshop_download_item 4000 1491950332 +workshop_download_item 4000 104576786
     restart: unless-stopped
     depends_on:
       - mysql
