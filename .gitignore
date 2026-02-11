@@ -31,3 +31,4 @@ docker/lua-bin/*.dll
 # Screenshots dev
 screenshots/
 .gitlab-ci.yml
+*.sw.vtx
