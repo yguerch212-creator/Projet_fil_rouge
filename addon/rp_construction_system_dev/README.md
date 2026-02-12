@@ -91,20 +91,27 @@ Les grosses caisses sont transportables en véhicule simfphys.
 
 ## 📦 Installation
 
-### Workshop (recommandé)
-1. Abonnez-vous à l'addon sur le Steam Workshop
-2. Ajoutez l'ID Workshop à votre collection serveur via `host_workshop_collection`
-3. Le contenu (modèles des caisses) nécessite le [content pack WW2](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539)
+### Workshop
+> ⚠️ La version Workshop est recommandée pour la plupart des serveurs. Cette version dev est destinée à l'environnement Docker de développement.
 
-### Manuel
+Pour l'installation Workshop, utilisez la [version Workshop](../rp_construction_system_workshop/) et suivez ses instructions.
+
+### Manuel (version dev avec MySQL)
 1. Téléchargez/clonez ce dépôt
-2. Copiez le dossier `rp_construction_system` dans `garrysmod/addons/`
-3. **Si vous n'utilisez pas MySQL** (recommandé pour la plupart des serveurs) :
-   - Supprimez `lua/rp_construction/sv_database.lua` (module MySQLOO)
-   - Supprimez `sql/schema.sql` (schéma DB)
-   - La section `DB` dans `sh_config.lua` sera simplement ignorée
-4. Redémarrez le serveur
-5. Assurez-vous que les joueurs ont le content pack pour les modèles de caisses
+2. Copiez le dossier `rp_construction_system_dev` dans `garrysmod/addons/`
+3. Installez [MySQLOO 9.7](https://github.com/FredyH/MySQLOO/releases) (binaire **64-bit**) dans `lua/bin/`
+4. Configurez la section `DB` dans `sh_config.lua` (host, port, user, password, database)
+5. Importez le schéma : `mysql -u root -p gmod_construction < sql/schema.sql`
+6. Redémarrez le serveur
+7. Assurez-vous que les joueurs ont le [content pack WW2](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539) pour les modèles de caisses
+
+### Docker (bind mount)
+C'est la méthode utilisée dans ce projet. Le dossier est monté directement dans le container :
+```yaml
+volumes:
+  - ./addons:/home/gmod/server/garrysmod/addons
+```
+Voir le [Guide d'installation](../../docs/GUIDE_INSTALLATION.md) pour la configuration Docker complète.
 
 ---
 
@@ -514,20 +521,27 @@ Large crates are transportable in simfphys vehicles.
 
 ## 📦 Installation
 
-### Workshop (recommended)
-1. Subscribe to the addon on Steam Workshop
-2. Add the Workshop ID to your server collection via `host_workshop_collection`
-3. Content (crate models) requires the [WW2 content pack](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539)
+### Workshop
+> ⚠️ The Workshop version is recommended for most servers. This dev version is intended for the Docker development environment.
 
-### Manual
+For Workshop installation, use the [Workshop version](../rp_construction_system_workshop/) and follow its instructions.
+
+### Manual (dev version with MySQL)
 1. Download/clone this repository
-2. Copy the `rp_construction_system` folder to `garrysmod/addons/`
-3. **If you don't use MySQL** (recommended for most servers):
-   - Delete `lua/rp_construction/sv_database.lua` (MySQLOO module)
-   - Delete `sql/schema.sql` (DB schema)
-   - The `DB` section in `sh_config.lua` will simply be ignored
-4. Restart the server
-5. Ensure players have the content pack for crate models
+2. Copy the `rp_construction_system_dev` folder to `garrysmod/addons/`
+3. Install [MySQLOO 9.7](https://github.com/FredyH/MySQLOO/releases) (**64-bit** binary) in `lua/bin/`
+4. Configure the `DB` section in `sh_config.lua` (host, port, user, password, database)
+5. Import the schema: `mysql -u root -p gmod_construction < sql/schema.sql`
+6. Restart the server
+7. Ensure players have the [WW2 content pack](https://steamcommunity.com/sharedfiles/filedetails/?id=3008026539) for crate models
+
+### Docker (bind mount)
+This is the method used in this project. The folder is mounted directly in the container:
+```yaml
+volumes:
+  - ./addons:/home/gmod/server/garrysmod/addons
+```
+See the [Installation Guide](../../docs/GUIDE_INSTALLATION.md) for the full Docker setup.
 
 ---
 
