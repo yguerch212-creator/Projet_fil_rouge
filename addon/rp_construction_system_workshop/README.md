@@ -454,7 +454,7 @@ Configurez les identifiants dans `sh_config.lua` → section `DB`.
 
 ## 📄 License
 
-MIT
+Libre pour le serveur Labguette Military RP. Pour toute autre utilisation, contactez l'auteur : Discord `thomaslewis5395`
 
 ---
 ---
@@ -723,4 +723,4 @@ Custom offsets can be added for any vehicle model.
 
 ## 📄 License
 
-MIT
+Libre pour le serveur Labguette Military RP. Pour toute autre utilisation, contactez l'auteur : Discord `thomaslewis5395`
