@@ -254,7 +254,7 @@ L'addon s'inscrit comme une **extension DarkRP** qui ajoute un nouveau métier (
 | `cl_vehicles.lua` | Client | HUD véhicule (instructions), bind PlayerBindPress | ~80 |
 | `weapon_construction.lua` | Partagé | SWEP : LMB sélection, RMB zone, Shift+RMB menu, R véhicule | ~200 |
 
-**Total estimé** : ~3 260 lignes de code GLua
+**Total estimé** : ~5 300 lignes de code GLua
 
 ### 1.5.3. Entités custom
 
@@ -277,12 +277,16 @@ L'addon s'inscrit comme une **extension DarkRP** qui ajoute un nouveau métier (
 | Client | Serveur | Net (UDP) | `Construction_CancelPlacement` | Écriture | ~16 octets |
 | Client | Serveur | Net (UDP) | `Construction_MaterializeGhost` | Écriture | ~32 octets |
 | Client | Serveur | Net (UDP) | `Construction_VehicleReload` | Écriture | ~16 octets |
+| Client | Serveur | Net (UDP) | `Construction_AttachCrate` | Écriture | ~16 octets |
+| Client | Serveur | Net (UDP) | `Construction_DetachCrate` | Écriture | ~16 octets |
 | Client | Serveur | Net (UDP) | `Construction_RequestSync` | Lecture | ~16 octets |
 | Serveur | Client | Net (UDP) | `Construction_SyncSelection` | Lecture | Variable |
 | Serveur | Client | Net (UDP) | `Construction_SaveToClient` | Lecture | Variable (1-64 Ko) |
 | Serveur | Client | Net (UDP) | `Construction_SendPreview` | Lecture | Variable |
 | Serveur | Client | Net (UDP) | `Construction_OpenMenu` | Appel | ~16 octets |
 | Serveur | MySQL | TCP 3306 | Requêtes SQL (prepared statements) | Lecture/Écriture | ~200 octets/req |
+
+> **Total** : 18 net messages (15 dans `sh_config.lua` + `Construction_VehicleReload` dans `weapon_construction.lua` + 2 véhicules attach/detach)
 | Client | Disque local | Fichier | `data/construction_blueprints/*.dat` | Lecture/Écriture | 1-50 Ko |
 
 ---
@@ -386,21 +390,22 @@ L'administrateur serveur modifie uniquement ce fichier pour adapter l'addon à s
 
 ```sql
 -- Table principale : logs d'audit des actions de construction
-CREATE TABLE IF NOT EXISTS construction_logs (
-    id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    steam_id    VARCHAR(32)  NOT NULL,
-    player_name VARCHAR(64)  NOT NULL,
-    action      VARCHAR(32)  NOT NULL,
-    details     TEXT,
-    ip_address  VARCHAR(45),
-    created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE IF NOT EXISTS blueprint_logs (
+    id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    steamid         VARCHAR(32)  NOT NULL,
+    player_name     VARCHAR(64)  NOT NULL,
+    action          VARCHAR(32)  NOT NULL,
+    blueprint_id    VARCHAR(64),
+    blueprint_name  VARCHAR(50),
+    details         TEXT,
+    created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     
     -- Index pour les requêtes d'audit fréquentes
-    INDEX idx_steam_id   (steam_id),
+    INDEX idx_steamid    (steamid),
     INDEX idx_action     (action),
     INDEX idx_created_at (created_at),
     -- Index composite pour les requêtes filtrées
-    INDEX idx_steam_action (steam_id, action)
+    INDEX idx_steam_action (steamid, action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table des blueprints partagés (fonctionnalité avancée)
@@ -414,7 +419,7 @@ CREATE TABLE IF NOT EXISTS shared_blueprints (
     prop_count  INT UNSIGNED NOT NULL DEFAULT 0,
     shared_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     
-    INDEX idx_steam_id (steam_id),
+    INDEX idx_steamid (steamid),
     INDEX idx_name     (name),
     INDEX idx_shared   (shared_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -424,7 +429,7 @@ CREATE TABLE IF NOT EXISTS shared_blueprints (
 
 | Exigence CdC | Implémentation BDD | Justification |
 |--------------|-------------------|---------------|
-| Traçabilité des actions | Table `construction_logs` | Chaque action significative est logguée avec SteamID, IP, timestamp |
+| Traçabilité des actions | Table `blueprint_logs` | Chaque action significative est logguée avec SteamID, IP, timestamp |
 | Partage de blueprints (futur) | Table `shared_blueprints` | Structure prête pour une v3.0 avec partage communautaire |
 | Audit de modération | Index sur `steam_id`, `action`, `created_at` | Requêtes rapides pour identifier les abus |
 | Compatibilité Unicode | `utf8mb4_unicode_ci` | Support des noms de joueurs internationaux |
@@ -435,28 +440,28 @@ CREATE TABLE IF NOT EXISTS shared_blueprints (
 
 | Index | Colonnes | Requête optimisée | Cardinalité estimée |
 |-------|----------|-------------------|---------------------|
-| `idx_steam_id` | `steam_id` | Logs par joueur | ~100 SteamID distincts |
+| `idx_steamid` | `steamid` | Logs par joueur | ~100 SteamID distincts |
 | `idx_action` | `action` | Logs par type (save, load, delete) | ~5 valeurs |
 | `idx_created_at` | `created_at` | Logs par période | Continue |
-| `idx_steam_action` | `steam_id, action` | Logs filtré joueur+type | ~500 combinaisons |
+| `idx_steam_action` | `steamid, action` | Logs filtré joueur+type | ~500 combinaisons |
 
 **Requêtes types et performances** :
 
 ```sql
 -- Derniers logs d'un joueur (< 5ms avec index)
-SELECT * FROM construction_logs 
-WHERE steam_id = ? ORDER BY created_at DESC LIMIT 20;
+SELECT * FROM blueprint_logs 
+WHERE steamid = ? ORDER BY created_at DESC LIMIT 20;
 
 -- Statistiques globales (< 10ms)
 SELECT action, COUNT(*) as total 
-FROM construction_logs GROUP BY action;
+FROM blueprint_logs GROUP BY action;
 
 -- Logs récents toutes actions (< 5ms)
-SELECT * FROM construction_logs 
+SELECT * FROM blueprint_logs 
 ORDER BY created_at DESC LIMIT 100;
 
 -- Purge des logs anciens (maintenance)
-DELETE FROM construction_logs 
+DELETE FROM blueprint_logs 
 WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
 ```
 
@@ -1077,12 +1082,13 @@ Couche 3 : Nettoyage mémoire
 -- JAMAIS de concaténation de chaînes dans le SQL
 
 -- ✅ Correct (prepared statement)
-local q = db:prepare("INSERT INTO construction_logs (steam_id, player_name, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
-q:setString(1, ply:SteamID())
+local q = db:prepare("INSERT INTO blueprint_logs (steamid, player_name, action, blueprint_id, blueprint_name, details) VALUES (?, ?, ?, ?, ?, ?)")
+q:setString(1, ply:SteamID64())
 q:setString(2, ply:Nick())
 q:setString(3, action)
-q:setString(4, details)
-q:setString(5, ply:IPAddress())
+q:setString(4, blueprintID or "")
+q:setString(5, blueprintName or "")
+q:setString(6, details or "")
 q:start()
 
 -- ❌ Interdit (concaténation)
@@ -1151,7 +1157,7 @@ Chaque action significative est logguée en console :
 
 ### 5.4.2. Logs base de données (optionnel)
 
-Table `construction_logs` avec indexation complète (cf. §2.3) :
+Table `blueprint_logs` avec indexation complète (cf. §2.3) :
 - Chaque save, load, delete, share est enregistré
 - SteamID, nom joueur, action, détails, IP, timestamp
 - Requêtes d'audit rapides grâce aux index composites

@@ -140,7 +140,7 @@ zcat "$BACKUP_FILE" | docker exec -i "$MYSQL_CONTAINER" \
 
 echo "[*] Vérification post-restauration..."
 docker exec "$MYSQL_CONTAINER" mysql -u"$MYSQL_USER" -p"$MYSQL_PASS" "$MYSQL_DB" \
-    -e "SELECT COUNT(*) as total_logs FROM construction_logs;" 2>/dev/null || echo "Table logs vide ou inexistante"
+    -e "SELECT COUNT(*) as total_logs FROM blueprint_logs;" 2>/dev/null || echo "Table logs vide ou inexistante"
 
 echo "[*] Redémarrage du serveur GMod..."
 docker start gmod-server

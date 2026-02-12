@@ -20,7 +20,7 @@
 ```bash
 # État de la base avant le test
 $ docker exec gmod-mysql mysql -uroot -pGmodSecurePass2025! gmod_construction \
-    -e "SELECT COUNT(*) as logs FROM construction_logs;"
+    -e "SELECT COUNT(*) as logs FROM blueprint_logs;"
 +------+
 | logs |
 +------+
@@ -49,7 +49,7 @@ $ /root/scripts/backup.sh daily
 ```bash
 # Suppression simulée des données (environnement de test)
 $ docker exec gmod-mysql mysql -uroot -pGmodSecurePass2025! gmod_construction \
-    -e "DROP TABLE construction_logs;"
+    -e "DROP TABLE blueprint_logs;"
 
 # Vérification : table absente
 $ docker exec gmod-mysql mysql -uroot -pGmodSecurePass2025! gmod_construction \
@@ -59,7 +59,7 @@ $ docker exec gmod-mysql mysql -uroot -pGmodSecurePass2025! gmod_construction \
 +------------------------------+
 | construction_blueprints      |
 +------------------------------+
-# → construction_logs a disparu
+# → blueprint_logs a disparu
 ```
 
 ### Étape 3 — Restauration
@@ -85,7 +85,7 @@ gmod-server
 
 | Vérification | Attendu | Obtenu | Statut |
 |-------------|---------|--------|--------|
-| Table `construction_logs` existe | Oui | Oui | ✅ |
+| Table `blueprint_logs` existe | Oui | Oui | ✅ |
 | Nombre d'enregistrements | 47 | 47 | ✅ |
 | Serveur GMod fonctionnel | Oui | Oui | ✅ |
 | Durée totale restauration | < 30 min | ~3 min | ✅ |

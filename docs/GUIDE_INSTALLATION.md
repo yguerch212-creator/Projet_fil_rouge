@@ -290,7 +290,7 @@ services:
     environment:
       - GAMEMODE=darkrp
       - MAP=falaise_lbrp_v1
-      - ARGS=+host_workshop_collection 2270926906 +workshop_download_item 4000 3664157203
+      - ARGS=+host_workshop_collection 2270926906 +workshop_download_item 4000 3664157203 +workshop_download_item 4000 773402917 +workshop_download_item 4000 1491950332 +workshop_download_item 4000 104576786
     volumes:
       - gmod-server-data:/home/gmod/server                              # Données persistantes
       - ./addons:/home/gmod/server/garrysmod/addons                     # Addons (bind mount)
