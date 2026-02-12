@@ -1,100 +1,186 @@
-# 🔄 Redondance — Disponibilité et résilience
+# 🔄 Redondance, réplication et clustering — C5
 
-## Objectif
-
-Assurer la **continuité de service** du serveur de jeu et la **protection des données** en cas de panne matérielle, logicielle ou humaine.
-
----
-
-## État actuel
-
-### Redondance des données
-
-| Donnée | Stratégie de redondance | Niveau |
-|--------|------------------------|--------|
-| Code source addon | Git + GitHub (distant) | ✅ Élevé |
-| Configuration DarkRP | Git + GitHub | ✅ Élevé |
-| docker-compose.yml | Git + GitHub | ✅ Élevé |
-| Images Docker | Snapshots locaux (`docker commit`) | ⚠️ Moyen |
-| Base MySQL | Volume Docker local (`./mysql-data/`) | ⚠️ Moyen |
-| Workshop Collection (~8 Go) | Commitée dans l'image Docker | ✅ Élevé |
-| Blueprints joueurs | Stockage local côté client | ℹ️ Hors périmètre serveur |
-
-### Points forts actuels
-
-- **Git comme source de vérité** : tout le code, la configuration et la documentation sont versionnés. En cas de perte du VPS, un `git clone` + `docker compose up -d` reconstruit l'environnement complet.
-- **Images Docker commitées** : après chaque étape stable, l'état du container est sauvegardé (`docker commit`). Cela évite de re-télécharger ~8 Go de Workshop à chaque rebuild et permet un rollback rapide (voir [DOCKER_IMAGES.md](../../docs/DOCKER_IMAGES.md)).
-- **Volume nommé** (`gmod-server-data`) : les données persistantes du serveur (cache, maps) survivent aux redémarrages du container.
-- **Séparation bind mount / image** : le code addon est en bind mount (modifiable sans rebuild), tandis que le contenu lourd (Workshop) est dans l'image (stable, pas de re-téléchargement).
-
-### Points à améliorer
-
-- **Images Docker uniquement locales** : si le VPS tombe, les images sont perdues. Pas de push vers un registry distant.
-- **MySQL sans réplication** : une seule instance, pas de slave/replica.
-- **Pas de backup automatisé** : les sauvegardes d'images et de base de données sont manuelles.
+> **C5.1** — Pertinence des améliorations proposées (matrice de risques, solutions)
+> **C5.2** — Qualité du PCA modifié (continuité opérationnelle)
 
 ---
 
-## Améliorations réalisées
+## 1. Matrice de risques (C5.1)
 
-### 1. Stratégie de snapshots Docker
+### Identification des actifs critiques
 
-Au cours du projet, une convention de nommage sémantique a été mise en place pour les images Docker :
+| Actif | Criticité | Propriétaire | Données |
+|-------|-----------|-------------|---------|
+| Serveur GMod | Critique | Admin serveur | État du jeu, joueurs connectés |
+| Base MySQL | Haute | Admin serveur | Logs, historique des actions |
+| Code addon (Lua) | Haute | Développeur | Code source, configuration |
+| Images Docker | Haute | Admin serveur | ~8 Go Workshop + modules |
+| Configuration DarkRP | Moyenne | Admin serveur | Jobs, entities, shipments |
+| Blueprints joueurs | Basse (côté client) | Joueurs | Fichiers `.dat` locaux |
+
+### Matrice de risques
+
+| # | Risque | Probabilité | Impact | Gravité | Stratégie de mitigation |
+|---|--------|-------------|--------|---------|------------------------|
+| R1 | **Crash du serveur GMod** | Moyenne | Critique | 🔴 Élevée | Restart auto Docker (`restart: unless-stopped`), snapshots Docker |
+| R2 | **Panne MySQL** | Faible | Haute | 🟠 Moyenne | Healthcheck Docker, mode dégradé (addon fonctionne sans DB) |
+| R3 | **Corruption Workshop (~8 Go)** | Faible | Critique | 🔴 Élevée | Workshop commitée dans l'image Docker, rollback instantané |
+| R4 | **Perte complète du VPS** | Très faible | Critique | 🔴 Critique | Git distant (GitHub), export images Docker, dumps SQL |
+| R5 | **Exploitation de vulnérabilité net message** | Faible | Haute | 🟠 Moyenne | Rate limiting, validation serveur, logging |
+| R6 | **Bug Lua bloquant (addon cassé)** | Moyenne | Haute | 🟠 Moyenne | Rollback Git, snapshots Docker, tests pré-déploiement |
+| R7 | **Saturation mémoire VPS** | Faible | Haute | 🟠 Moyenne | Limites Docker (`mem_limit`), monitoring `docker stats` |
+| R8 | **Perte de données MySQL** | Faible | Moyenne | 🟡 Faible | Volume Docker persistant, dumps réguliers |
+
+### Solutions de redondance proposées
+
+| Risque | Solution en place | Amélioration proposée |
+|--------|-------------------|----------------------|
+| R1 | `docker compose up -d` manuel | `restart: unless-stopped` + script watchdog |
+| R2 | Healthcheck MySQL 10s | Réplication master-slave MySQL |
+| R3 | Image Docker commitée (8 Go inclus) | Push vers Docker Hub / registry privé |
+| R4 | Git + GitHub | + Export images Docker + dump SQL vers S3/Backblaze |
+| R5 | Rate limiting `sv_security.lua` | WAF niveau réseau (iptables) |
+| R6 | Git revert | Pipeline CI/CD avec tests avant déploiement |
+| R7 | `mem_limit: 3g` / `mem_limit: 512m` | Alerting Prometheus quand RAM > 80% |
+| R8 | Volume Docker local | Dump MySQL automatisé (cron) + réplication |
+
+---
+
+## 2. Plan de Continuité d'Activité — PCA (C5.2)
+
+### Objectifs du PCA
+
+| Métrique | Objectif actuel | Objectif cible |
+|----------|----------------|----------------|
+| **RTO** (Recovery Time Objective) | < 5 min (restart Docker) | < 2 min (restart auto) |
+| **RPO** (Recovery Point Objective) | Dernier commit Git | < 1h (dumps MySQL horaires) |
+| **Disponibilité cible** | 95% | 99% |
+| **MTTR** (Mean Time To Repair) | ~10 min (diagnostic + restart) | < 5 min (procédure documentée) |
+
+### Scénarios de continuité
+
+#### Scénario 1 : Crash du container GMod
+
+```
+Détection : Docker healthcheck ou absence de joueurs
+Temps de détection : < 30 secondes (avec restart: unless-stopped)
+Action automatique : Docker redémarre le container
+Action manuelle (si échec) :
+  $ docker compose down && docker compose up -d
+RTO : < 2 minutes
+Impact : Déconnexion temporaire des joueurs, reconnexion automatique
+```
+
+#### Scénario 2 : Panne MySQL
+
+```
+Détection : Healthcheck mysqladmin ping (toutes les 10s)
+Impact immédiat : L'addon passe en mode dégradé (pas de logs DB)
+  → Les fonctionnalités core (blueprints, ghosts, caisses) continuent
+  → Seul le logging en DB est interrompu
+Action : docker restart gmod-mysql
+RTO : < 1 minute
+RPO : Aucune perte (logs console toujours actifs)
+```
+
+#### Scénario 3 : Perte complète du VPS
+
+```
+Détection : Monitoring externe (ping port 27015)
+Plan de reprise :
+  1. Provisionner un nouveau VPS (Hostinger, ~10 min)
+  2. Installer Docker + Docker Compose (~5 min)
+  3. git clone https://github.com/yguerch212-creator/Projet_fil_rouge.git
+  4. Restaurer l'image Docker depuis le backup exporté
+     $ docker load < backup-gmod-v2.2-vehicles.tar
+  5. Restaurer le dump MySQL
+     $ docker exec -i gmod-mysql mysql -u root -p < backup.sql
+  6. docker compose up -d
+RTO : < 30 minutes
+RPO : Dernier backup (objectif : < 1 heure)
+```
+
+#### Scénario 4 : Corruption de l'addon (bug bloquant)
+
+```
+Détection : Erreurs Lua dans les logs serveur, signalements joueurs
+Action immédiate :
+  $ cd /root/ProjetFilRouge
+  $ git log --oneline -5       # Identifier le commit fautif
+  $ git revert HEAD            # Annuler le dernier commit
+  $ docker restart gmod-server
+RTO : < 5 minutes
+RPO : Aucune perte (Git conserve tout l'historique)
+Alternative : Changer le tag Docker dans docker-compose.yml
+  image: projetfilrouge/gmod-server:v2.1-stable
+```
+
+### Redondance des données — État actuel
+
+| Donnée | Stockage primaire | Redondance | Niveau |
+|--------|------------------|------------|--------|
+| Code source addon | Bind mount VPS | Git + GitHub (distant) | ✅ Élevé |
+| Configuration DarkRP | Bind mount VPS | Git + GitHub | ✅ Élevé |
+| docker-compose.yml | VPS | Git + GitHub | ✅ Élevé |
+| Images Docker (8 Go) | Stockage local VPS | `docker commit` (local) | ⚠️ Moyen |
+| Base MySQL | Volume Docker local | Aucune réplication | ⚠️ Moyen |
+| Workshop Collection | Dans l'image Docker | Commitée = persistante | ✅ Élevé |
+| Blueprints joueurs | PC client (`data/`) | Hors périmètre serveur | ℹ️ N/A |
+
+### Améliorations réalisées pour la continuité
+
+#### 1. Stratégie de snapshots Docker (rollback instantané)
+
+Convention de nommage sémantique :
 
 ```
 projetfilrouge/gmod-server:v{major}.{minor}-{description}
 ```
 
-Chaque étape du développement correspond à un snapshot :
+| Image | Contenu | Taille |
+|-------|---------|--------|
+| `v1.0-base` | GMod + DarkRP + 101 addons Workshop | ~8 Go |
+| `v1.1-mysql` | + MySQLOO 64-bit | ~8.1 Go |
+| `v2-stable` | + Addon v2.0 (ghosts + caisses) | ~8.1 Go |
+| `v2.1-stable` | + Import AD2, UI refonte | ~8.1 Go |
+| `v2.2-vehicles` | + Véhicules simfphys | ~8.2 Go |
 
-| Image | Contenu sauvegardé |
-|-------|--------------------|
-| `v1.0-base` | GMod + DarkRP + 101 addons Workshop |
-| `v1.1-mysql` | + MySQLOO 64-bit |
-| `v2-stable` | + Addon v2.0 (ghosts + caisses) |
-| `v2.1-stable` | + Import AD2, UI refonte |
-| `v2.2-vehicles` | + Véhicules simfphys |
+**Rollback** : changer le tag dans `docker-compose.yml` → `docker compose up -d` → serveur restauré en ~30 secondes.
 
-Cela permet un **rollback immédiat** en changeant simplement le tag dans `docker-compose.yml`.
+#### 2. Mode dégradé MySQL
 
-### 2. Blueprints côté client
+L'addon a été conçu pour fonctionner **sans base de données**. Si MySQL est indisponible :
+- Les blueprints continuent de fonctionner (stockage client)
+- Les ghosts et caisses fonctionnent normalement
+- Seul le logging en base est désactivé (les logs console restent actifs)
 
-La décision architecturale de stocker les blueprints **localement sur le PC du joueur** (dans `data/construction_blueprints/`) plutôt que sur le serveur a un impact direct sur la redondance :
+Ce design élimine MySQL comme **SPOF** (Single Point of Failure) pour les fonctionnalités critiques.
 
-- **Avantage** : aucune donnée joueur à sauvegarder côté serveur, pas de risque de perte massive en cas de panne serveur.
-- **Inconvénient** : le joueur est responsable de ses propres sauvegardes. S'il perd son PC, il perd ses blueprints.
-
-Ce choix a été fait consciemment pour simplifier l'infrastructure et réduire la surface de risque côté serveur.
-
-### 3. Healthcheck MySQL
-
-Le container MySQL intègre un **healthcheck** natif :
+#### 3. Healthcheck et démarrage ordonné
 
 ```yaml
-healthcheck:
-  test: mysqladmin ping -h localhost
-  interval: 10s
-  timeout: 5s
-  retries: 3
+# docker-compose.yml
+services:
+  mysql:
+    healthcheck:
+      test: mysqladmin ping -h localhost
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  gmod:
+    depends_on:
+      mysql:
+        condition: service_healthy
 ```
 
-Le serveur GMod (`depends_on: mysql: condition: service_healthy`) ne démarre que lorsque MySQL est prêt. Cela évite les erreurs de connexion au démarrage.
+Le serveur GMod ne démarre que lorsque MySQL est `healthy`, évitant les erreurs de connexion au démarrage.
 
----
+### Perspectives de clustering
 
-## Perspectives d'évolution
-
-### Court terme
-
-- **Backup automatisé** : script cron pour exporter les images Docker et les dumps MySQL vers un stockage distant (voir [Plan de sauvegarde](../backup/))
-- **Push des images vers un registry** : Docker Hub ou registry privé pour avoir les snapshots hors du VPS
-
-### Moyen terme
-
-- **Réplication MySQL** : ajout d'un slave MySQL en lecture seule (Docker Compose multi-service)
-- **Stockage distribué des blueprints** : système de partage serveur (tables `shared_blueprints` et `blueprint_permissions` déjà prévues dans le schéma SQL)
-
-### Long terme
-
-- **Infrastructure multi-nœuds** : déploiement sur plusieurs VPS avec load balancing
-- **Sauvegarde géographiquement distribuée** : backups sur un second datacenter
+| Horizon | Solution | Bénéfice |
+|---------|----------|----------|
+| Court terme | `restart: unless-stopped` dans Docker Compose | Restart automatique après crash |
+| Moyen terme | Réplication MySQL master-slave (Docker Compose) | Lecture sur slave, failover |
+| Moyen terme | Push images vers Docker Hub | Redondance géographique des snapshots |
+| Long terme | Docker Swarm / Kubernetes | Orchestration multi-nœuds, HA |
+| Long terme | Multi-VPS avec load balancer | Haute disponibilité géographique |
