@@ -3,6 +3,7 @@
 **Projet B3 Cybersécurité — Efrei Bordeaux**
 
 Conception, développement et déploiement d'un addon Garry's Mod professionnel de construction collaborative pour serveur DarkRP, dans un environnement conteneurisé Docker. Ce projet couvre l'ensemble du cycle de vie : infrastructure, développement, tests, sécurité et documentation.
+addon links : https://steamcommunity.com/sharedfiles/filedetails/?id=3664157203
 
 ---
 
