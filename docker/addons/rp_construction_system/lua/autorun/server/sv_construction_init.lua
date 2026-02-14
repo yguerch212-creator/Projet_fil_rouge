@@ -97,10 +97,11 @@ resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm_normal.
 
 hook.Add("InitPostEntity", "Construction_DBConnect", function()
     timer.Simple(5, function()
-        -- Vérifier si mysqloo est disponible AVANT de tenter la connexion
-        local ok = pcall(require, "mysqloo")
-        if not ok then
-            print("[Construction] MySQLOO non disponible - mode hors-ligne (normal en Sandbox)")
+        -- Vérifier si mysqloo est déjà chargé ou si le binaire existe
+        if not mysqloo and not file.Exists("bin/gmsv_mysqloo_win64.dll", "LUA")
+            and not file.Exists("bin/gmsv_mysqloo_linux64.dll", "LUA")
+            and not file.Exists("bin/gmsv_mysqloo_osx64.dll", "LUA") then
+            print("[Construction] MySQLOO non installe - mode hors-ligne (normal en Sandbox)")
             return
         end
         print("[Construction] Connexion a MySQL...")
@@ -110,8 +111,8 @@ end)
 
 timer.Simple(30, function()
     if ConstructionSystem.DB and not ConstructionSystem.DB.IsConnected() then
-        local ok = pcall(require, "mysqloo")
-        if ok then
+        if mysqloo or file.Exists("bin/gmsv_mysqloo_win64.dll", "LUA")
+            or file.Exists("bin/gmsv_mysqloo_linux64.dll", "LUA") then
             print("[Construction] Connexion MySQL (delayed)...")
             ConstructionSystem.DB.Connect()
         end
@@ -156,21 +157,26 @@ hook.Add("OnPlayerChangedTeam", "Construction_GiveSWEP", function(ply, oldTeam, 
 end)
 
 -- Spawn: donner le SWEP selon le contexte
--- Si SWEPJobs est configuré (DarkRP) → vérifier le job
--- Si SWEPJobs est nil (Sandbox ou pas de restriction) → donner à tout le monde
-hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
-    local swepJobs = ConstructionSystem.Config.SWEPJobs
-    if not swepJobs then
-        -- Pas de restriction de job → tout le monde reçoit le SWEP
-        ply:Give("weapon_construction")
-        return
-    end
-    for _, team in ipairs(swepJobs) do
-        if ply:Team() == team then
+-- Utilise PlayerSpawn + timer pour s'assurer que le SWEP est donné APRÈS
+-- le loadout du gamemode (Sandbox fait StripWeapons dans PlayerLoadout)
+hook.Add("PlayerSpawn", "Construction_GiveWeapon", function(ply)
+    timer.Simple(1, function()
+        if not IsValid(ply) then return end
+        if ply:HasWeapon("weapon_construction") then return end
+
+        local swepJobs = ConstructionSystem.Config.SWEPJobs
+        if not swepJobs then
+            -- Pas de restriction de job → tout le monde reçoit le SWEP
             ply:Give("weapon_construction")
             return
         end
-    end
+        for _, team in ipairs(swepJobs) do
+            if ply:Team() == team then
+                ply:Give("weapon_construction")
+                return
+            end
+        end
+    end)
 end)
 
 print("[Construction] Serveur initialise !")
