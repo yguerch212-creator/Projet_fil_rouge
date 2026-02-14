@@ -57,6 +57,7 @@ function SWEP:PrimaryAttack()
 end
 
 -- RMB: Zone select / Shift+RMB: Menu
+-- Note: En singleplayer, PrimaryAttack/SecondaryAttack sont predicted = SERVER only
 function SWEP:SecondaryAttack()
     self:SetNextSecondaryFire(CurTime() + 0.5)
 
@@ -64,21 +65,30 @@ function SWEP:SecondaryAttack()
     if not IsValid(ply) then return end
 
     if ply:KeyDown(IN_SPEED) then
+        -- Menu: envoyer au client via net (singleplayer = server only)
+        if SERVER then
+            net.Start("Construction_OpenMenu")
+            net.Send(ply)
+        end
         if CLIENT then ConstructionSystem.Menu.Open() end
         return
     end
 
-    if SERVER then return end
-
     local tr = ply:GetEyeTrace()
     if not tr.Hit then return end
 
-    local radius = ConstructionSystem.ClientRadius or ConstructionSystem.Config.SelectionRadiusDefault or 500
-
-    net.Start("Construction_SelectRadius")
-    net.WriteVector(tr.HitPos)
-    net.WriteUInt(math.Round(radius), 10)
-    net.SendToServer()
+    -- Zone select: faire directement côté serveur (fonctionne en solo + multi)
+    if SERVER then
+        local radius = ConstructionSystem.ClientRadius or ConstructionSystem.Config.SelectionRadiusDefault or 500
+        local added = ConstructionSystem.Selection.AddInRadius(ply, tr.HitPos, radius)
+        ConstructionSystem.Compat.Notify(ply, 0, 3, added .. " prop(s) ajoute(s) a la selection")
+    elseif CLIENT then
+        local radius = ConstructionSystem.ClientRadius or ConstructionSystem.Config.SelectionRadiusDefault or 500
+        net.Start("Construction_SelectRadius")
+        net.WriteVector(tr.HitPos)
+        net.WriteUInt(math.Round(radius), 10)
+        net.SendToServer()
+    end
 end
 
 -- Reload (R): clear sélection OU décharger caisse du véhicule

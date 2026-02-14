@@ -28,6 +28,9 @@ end
 
 -----------------------------------------------------------
 -- LEFT CLICK: Toggle select prop
+-- Note: En singleplayer, LeftClick/RightClick/Reload sont
+-- PREDICTED = ne s'exécutent que SERVER-side.
+-- Donc toute la logique est côté serveur.
 -----------------------------------------------------------
 function TOOL:LeftClick(tr)
     if not tr.Hit or not IsValid(tr.Entity) then return false end
@@ -44,6 +47,9 @@ end
 
 -----------------------------------------------------------
 -- RIGHT CLICK: Zone select / Shift = Menu
+-- En singleplayer, predicted = SERVER only.
+-- Zone select se fait directement côté serveur.
+-- Pour le menu (client), on envoie un net message.
 -----------------------------------------------------------
 function TOOL:RightClick(tr)
     local ply = self:GetOwner()
@@ -51,6 +57,10 @@ function TOOL:RightClick(tr)
 
     -- Shift+RMB = ouvrir le menu
     if ply:KeyDown(IN_SPEED) then
+        if SERVER then
+            net.Start("Construction_OpenMenu")
+            net.Send(ply)
+        end
         if CLIENT then
             ConstructionSystem.Menu.Open()
         end
@@ -59,12 +69,12 @@ function TOOL:RightClick(tr)
 
     if not tr.Hit then return false end
 
-    if CLIENT then
-        local radius = self:GetClientNumber("radius", 500)
-        net.Start("Construction_SelectRadius")
-        net.WriteVector(tr.HitPos)
-        net.WriteUInt(math.Clamp(math.Round(radius), 50, 1000), 10)
-        net.SendToServer()
+    -- Zone select directement côté serveur (fonctionne en solo + multi)
+    if SERVER then
+        local radius = tonumber(ply:GetInfo("construction_radius")) or 500
+        radius = math.Clamp(radius, 50, 1000)
+        local added = ConstructionSystem.Selection.AddInRadius(ply, tr.HitPos, radius)
+        ConstructionSystem.Compat.Notify(ply, 0, 3, added .. " prop(s) ajoute(s) a la selection")
     end
 
     return true
