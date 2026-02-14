@@ -18,7 +18,10 @@ for _, msg in ipairs(ConstructionSystem.NetMessages) do
 end
 print("[Construction] " .. #ConstructionSystem.NetMessages .. " net messages enregistres")
 
--- 3. Module logging (en premier pour que les autres modules l'utilisent)
+-- 3. Module compatibilité DarkRP/Sandbox (en premier)
+include("rp_construction/sv_compat.lua")
+
+-- 4. Module logging
 include("rp_construction/sv_logging.lua")
 
 -- 4. Module base de données
@@ -107,7 +110,16 @@ timer.Simple(30, function()
     end
 end)
 
--- 11. Configuration des jobs SWEP après chargement DarkRP
+-- 11. Configuration des jobs SWEP après chargement DarkRP (skip si Sandbox)
+if not ConstructionSystem.Compat.IsDarkRP() then
+    print("[Construction] Mode Sandbox detecte - pas de restriction de jobs")
+    -- En Sandbox, donner le SWEP au spawn
+    hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
+        ply:Give("weapon_construction")
+    end)
+end
+
+if ConstructionSystem.Compat.IsDarkRP() then
 hook.Add("loadCustomDarkRPItems", "Construction_SetupJobs", function()
     -- Configure les jobs qui reçoivent le SWEP automatiquement
     -- Par défaut: TEAM_BUILDER si il existe
@@ -129,17 +141,15 @@ hook.Add("loadCustomDarkRPItems", "Construction_SetupJobs", function()
     print("[Construction] Jobs Caisses: " .. (ConstructionSystem.Config.CrateAllowedJobs and #ConstructionSystem.Config.CrateAllowedJobs or 0) .. " job(s)")
 end)
 
--- 12. Distribution SWEP au changement de job
+-- 12. Distribution SWEP au changement de job (DarkRP only)
 hook.Add("OnPlayerChangedTeam", "Construction_GiveSWEP", function(ply, oldTeam, newTeam)
     timer.Simple(0.5, function()
         if not IsValid(ply) then return end
 
-        -- Retirer le SWEP si l'ancien job l'avait
         if ply:HasWeapon("weapon_construction") then
             ply:StripWeapon("weapon_construction")
         end
 
-        -- Donner si le nouveau job est dans la liste
         local swepJobs = ConstructionSystem.Config.SWEPJobs
         if swepJobs then
             for _, team in ipairs(swepJobs) do
@@ -152,7 +162,7 @@ hook.Add("OnPlayerChangedTeam", "Construction_GiveSWEP", function(ply, oldTeam, 
     end)
 end)
 
--- 13. Distribution SWEP au spawn
+-- 13. Distribution SWEP au spawn (DarkRP only)
 hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
     local swepJobs = ConstructionSystem.Config.SWEPJobs
     if not swepJobs then return end
@@ -164,5 +174,7 @@ hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
         end
     end
 end)
+
+end -- fin du if IsDarkRP()
 
 print("[Construction] Serveur initialise !")

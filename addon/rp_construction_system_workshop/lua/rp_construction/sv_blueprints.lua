@@ -186,7 +186,7 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
     if not IsValid(ply) or not ply:Alive() then return end
 
     if saveCooldowns[ply] and saveCooldowns[ply] > CurTime() then
-        DarkRP.notify(ply, 1, 3, "Attends avant de sauvegarder !")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Attends avant de sauvegarder !")
         return
     end
     saveCooldowns[ply] = CurTime() + ConstructionSystem.Config.SaveCooldown
@@ -196,7 +196,7 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
 
     -- Validation nom
     if not name or #name < 1 or #name > ConstructionSystem.Config.MaxNameLength then
-        DarkRP.notify(ply, 1, 3, "Nom invalide (1-" .. ConstructionSystem.Config.MaxNameLength .. " caractères)")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Nom invalide (1-" .. ConstructionSystem.Config.MaxNameLength .. " caractères)")
         return
     end
     name = string.gsub(name, "[^%w%s_%-%.%(%)%[%]]", "")
@@ -209,14 +209,14 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
     -- Récupérer les props sélectionnés
     local entities = ConstructionSystem.Selection.GetEntities(ply)
     if #entities == 0 then
-        DarkRP.notify(ply, 1, 3, "Aucun prop sélectionné !")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Aucun prop sélectionné !")
         return
     end
 
     -- Sérialiser
     local data, propCount = ConstructionSystem.Blueprints.Serialize(entities)
     if not data then
-        DarkRP.notify(ply, 1, 3, "Erreur de sérialisation")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Erreur de sérialisation")
         return
     end
 
@@ -236,7 +236,7 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
     local compressed = util.Compress(json)
 
     if not compressed then
-        DarkRP.notify(ply, 1, 3, "Erreur compression")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Erreur compression")
         return
     end
 
@@ -249,10 +249,10 @@ net.Receive("Construction_SaveBlueprint", function(len, ply)
     net.Send(ply)
 
     ConstructionSystem.Selection.Clear(ply)
-    DarkRP.notify(ply, 0, 5, "Blueprint '" .. name .. "' sérialisé (" .. propCount .. " props) - Sauvegarde locale")
+    ConstructionSystem.Compat.Notify(ply, 0, 5, "Blueprint '" .. name .. "' sérialisé (" .. propCount .. " props) - Sauvegarde locale")
 
     -- Log serveur (optionnel, si DB connectée)
-    if false then -- DB disabled in Workshop version
+    if ConstructionSystem.DB and ConstructionSystem.DB.IsConnected() then
         ConstructionSystem.DB.Log(ply, "save", "Blueprint '" .. name .. "' (" .. propCount .. " props)")
     end
 end)
@@ -265,7 +265,7 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
     if not IsValid(ply) or not ply:Alive() then return end
 
     if loadCooldowns[ply] and loadCooldowns[ply] > CurTime() then
-        DarkRP.notify(ply, 1, 3, "Attends avant de charger !")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Attends avant de charger !")
         return
     end
     loadCooldowns[ply] = CurTime() + ConstructionSystem.Config.LoadCooldown
@@ -275,32 +275,32 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
 
     -- Sécurité: limiter la taille (max 512KB)
     if dataLen > 524288 then
-        DarkRP.notify(ply, 1, 3, "Fichier trop volumineux")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Fichier trop volumineux")
         return
     end
 
     local compressed = net.ReadData(dataLen)
     if not compressed then
-        DarkRP.notify(ply, 1, 3, "Données corrompues")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Données corrompues")
         return
     end
 
     local json = util.Decompress(compressed)
     if not json then
-        DarkRP.notify(ply, 1, 3, "Erreur décompression")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Erreur décompression")
         return
     end
 
     local blueprint = util.JSONToTable(json)
     if not blueprint or not blueprint.data or not blueprint.data.Entities then
-        DarkRP.notify(ply, 1, 3, "Blueprint invalide")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Blueprint invalide")
         return
     end
 
     -- Valider côté serveur AVANT de reconstruire (blacklist, limites)
     local valid, result = ValidateBlueprintData(blueprint.data)
     if not valid then
-        DarkRP.notify(ply, 1, 4, "Blueprint rejeté: " .. tostring(result))
+        ConstructionSystem.Compat.Notify(ply, 1, 4, "Blueprint rejeté: " .. tostring(result))
         return
     end
 
@@ -328,7 +328,7 @@ net.Receive("Construction_LoadBlueprint", function(len, ply)
     local previewCompressed = util.Compress(previewJson)
 
     if not previewCompressed then
-        DarkRP.notify(ply, 1, 4, "Erreur preview")
+        ConstructionSystem.Compat.Notify(ply, 1, 4, "Erreur preview")
         return
     end
 
@@ -358,13 +358,13 @@ net.Receive("Construction_ConfirmPlacement", function(len, ply)
     local rotation = net.ReadFloat()
 
     if not ply.PendingBlueprint then
-        DarkRP.notify(ply, 1, 3, "Aucun blueprint en attente")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Aucun blueprint en attente")
         return
     end
 
     -- Validation: position pas trop loin
     if spawnPos:Distance(ply:GetPos()) > 5000 then
-        DarkRP.notify(ply, 1, 3, "Position trop éloignée")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Position trop éloignée")
         return
     end
 
@@ -392,11 +392,11 @@ net.Receive("Construction_ConfirmPlacement", function(len, ply)
     local ok, groupID = ConstructionSystem.Ghosts.SpawnFromBlueprint(ply, rotatedData, spawnPos)
     if ok then
         -- Log
-        if false then -- DB disabled in Workshop version
+        if ConstructionSystem.DB and ConstructionSystem.DB.IsConnected() then
             ConstructionSystem.DB.Log(ply, "load", "Ghosts placés: '" .. bpName .. "'")
         end
     else
-        DarkRP.notify(ply, 1, 4, "Erreur spawn: " .. tostring(groupID))
+        ConstructionSystem.Compat.Notify(ply, 1, 4, "Erreur spawn: " .. tostring(groupID))
     end
 
     ply.PendingBlueprint = nil

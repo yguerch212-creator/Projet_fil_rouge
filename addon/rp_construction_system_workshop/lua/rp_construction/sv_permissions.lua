@@ -26,13 +26,13 @@ net.Receive("Construction_ShareBlueprint", function(len, ply)
     -- Sanitize
     targetName = string.gsub(string.Trim(targetName), "[^%w%s_%-]", "")
     if #targetName < 1 then
-        DarkRP.notify(ply, 1, 3, "Nom de joueur invalide")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Nom de joueur invalide")
         return
     end
 
     -- Vérifier le coût
     if not ply:canAfford(ConstructionSystem.Config.ShareCost) then
-        DarkRP.notify(ply, 1, 3, "Pas assez d'argent ! ($" .. ConstructionSystem.Config.ShareCost .. " requis)")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Pas assez d'argent ! ($" .. ConstructionSystem.Config.ShareCost .. " requis)")
         return
     end
 
@@ -46,25 +46,25 @@ net.Receive("Construction_ShareBlueprint", function(len, ply)
     end
 
     if not IsValid(targetPly) then
-        DarkRP.notify(ply, 1, 3, "Joueur '" .. targetName .. "' introuvable (doit etre connecte)")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Joueur '" .. targetName .. "' introuvable (doit etre connecte)")
         return
     end
 
     if targetPly == ply then
-        DarkRP.notify(ply, 1, 3, "Tu ne peux pas partager avec toi-meme !")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Tu ne peux pas partager avec toi-meme !")
         return
     end
 
     -- Partager
     ply:addMoney(-ConstructionSystem.Config.ShareCost)
 
-    -- DB disabled: ConstructionSystem.DB.ShareBlueprint(blueprintId, ply, targetPly:SteamID(), permLevel, function(success, err)
+    ConstructionSystem.DB.ShareBlueprint(blueprintId, ply, targetPly:SteamID(), permLevel, function(success, err)
         if success then
-            DarkRP.notify(ply, 0, 4, "Blueprint partage avec " .. targetPly:Nick() .. " (" .. permLevel .. ")")
-            DarkRP.notify(targetPly, 0, 4, ply:Nick() .. " a partage un blueprint avec toi !")
+            ConstructionSystem.Compat.Notify(ply, 0, 4, "Blueprint partage avec " .. targetPly:Nick() .. " (" .. permLevel .. ")")
+            ConstructionSystem.Compat.Notify(targetPly, 0, 4, ply:Nick() .. " a partage un blueprint avec toi !")
         else
             ply:addMoney(ConstructionSystem.Config.ShareCost)
-            DarkRP.notify(ply, 1, 3, err or "Erreur de partage")
+            ConstructionSystem.Compat.Notify(ply, 1, 3, err or "Erreur de partage")
         end
     end)
 end)

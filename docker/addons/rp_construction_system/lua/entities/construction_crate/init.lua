@@ -69,12 +69,7 @@ function ENT:UseMaterial()
 end
 
 function ENT:CanPlayerUse(ply)
-    local allowed = ConstructionSystem.Config.CrateAllowedJobs
-    if not allowed then return true end
-    for _, jobId in ipairs(allowed) do
-        if ply:Team() == jobId then return true end
-    end
-    return false
+    return ConstructionSystem.Compat.CanUseCrate(ply)
 end
 
 function ENT:Use(activator, caller)
@@ -83,16 +78,16 @@ function ENT:Use(activator, caller)
     self.LastUse = CurTime() + 0.5
     if self:GetNWBool("IsLoaded", false) then return end
     if not self:CanPlayerUse(activator) then
-        DarkRP.notify(activator, 1, 3, "Votre metier n'a pas acces aux caisses de materiaux !")
+        ConstructionSystem.Compat.Notify(activator, 1, 3, "Votre metier n'a pas acces aux caisses de materiaux !")
         return
     end
     if self.Materials <= 0 then
-        DarkRP.notify(activator, 1, 3, "Caisse vide !")
+        ConstructionSystem.Compat.Notify(activator, 1, 3, "Caisse vide !")
         return
     end
     activator.ActiveCrate = self
     activator:SetNWEntity("ActiveCrate", self)
-    DarkRP.notify(activator, 0, 4, "Caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
+    ConstructionSystem.Compat.Notify(activator, 0, 4, "Caisse activee ! (" .. self.Materials .. " materiaux) - Visez un fantome + E")
 end
 
 ---------------------------------------------------------------------------

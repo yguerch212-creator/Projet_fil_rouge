@@ -52,7 +52,7 @@ function ConstructionSystem.Ghosts.SpawnFromBlueprint(ply, blueprintData, spawnP
                     undo.Finish()
                 end
 
-                DarkRP.notify(ply, 0, 5, "Blueprint fantome charge : " .. propCount .. " props")
+                ConstructionSystem.Compat.Notify(ply, 0, 5, "Blueprint fantome charge : " .. propCount .. " props")
                 return
             end
 
@@ -107,7 +107,7 @@ net.Receive("Construction_MaterializeGhost", function(len, ply)
 
     local mats = crate.Materials or 0
     if mats <= 0 then
-        DarkRP.notify(ply, 1, 3, "Caisse vide !")
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Caisse vide !")
         ply.ActiveCrate = nil
         return
     end
@@ -133,7 +133,7 @@ net.Receive("Construction_MaterializeGhost", function(len, ply)
     end
 
     if not IsValid(bestGhost) then
-        DarkRP.notify(ply, 1, 2, "Aucun fantome en vue")
+        ConstructionSystem.Compat.Notify(ply, 1, 2, "Aucun fantome en vue")
         return
     end
 
@@ -163,7 +163,7 @@ net.Receive("Construction_MaterializeGhost", function(len, ply)
 
             if remainingGhosts == 0 then
                 for _, p in ipairs(player.GetAll()) do
-                    DarkRP.notify(p, 0, 5, "Construction terminee !")
+                    ConstructionSystem.Compat.Notify(p, 0, 5, "Construction terminee !")
                 end
                 ActiveGroups[groupID] = nil
             end

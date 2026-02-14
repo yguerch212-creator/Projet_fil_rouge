@@ -14,28 +14,12 @@ local PlayerSelections = {}
 
 --- Vérifie si un joueur peut utiliser le système de construction
 local function CanUseConstruction(ply)
-    if not IsValid(ply) or not ply:Alive() then return false end
-
-    local allowed = ConstructionSystem.Config.AllowedJobs
-    if allowed and not table.HasValue(allowed, ply:Team()) then
-        return false
-    end
-
-    return true
+    return ConstructionSystem.Compat.CanUse(ply)
 end
 
---- Vérifie si un joueur possède une entité (CPPI compatible)
+--- Vérifie si un joueur possède une entité
 local function IsOwner(ply, ent)
-    if not IsValid(ent) or not IsValid(ply) then return false end
-
-    -- CPPI (FPP et autres prop protections)
-    if ent.CPPIGetOwner then
-        local owner = ent:CPPIGetOwner()
-        return IsValid(owner) and owner == ply
-    end
-
-    -- Fallback: superadmin peut tout sélectionner
-    return ply:IsSuperAdmin()
+    return ConstructionSystem.Compat.IsOwner(ply, ent)
 end
 
 --- Retourne la clé unique du joueur pour le stockage
@@ -210,7 +194,7 @@ net.Receive("Construction_SelectToggle", function(len, ply)
 
     local ok, err = ConstructionSystem.Selection.Toggle(ply, ent)
     if not ok and err then
-        DarkRP.notify(ply, 1, 3, err)
+        ConstructionSystem.Compat.Notify(ply, 1, 3, err)
     end
 end)
 
@@ -233,14 +217,14 @@ net.Receive("Construction_SelectRadius", function(len, ply)
     if center:Distance(ply:GetPos()) > 2000 then return end
 
     local added = ConstructionSystem.Selection.AddInRadius(ply, center, radius)
-    DarkRP.notify(ply, 0, 3, added .. " prop(s) ajouté(s) à la sélection")
+    ConstructionSystem.Compat.Notify(ply, 0, 3, added .. " prop(s) ajouté(s) à la sélection")
 end)
 
 --- Vider la sélection (reload tool)
 net.Receive("Construction_SelectClear", function(len, ply)
     if not CanUseConstruction(ply) then return end
     ConstructionSystem.Selection.Clear(ply)
-    DarkRP.notify(ply, 0, 3, "Sélection vidée")
+    ConstructionSystem.Compat.Notify(ply, 0, 3, "Sélection vidée")
 end)
 
 --- Demande de sync (quand le client rejoint ou ouvre le menu)

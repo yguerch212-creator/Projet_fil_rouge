@@ -81,6 +81,17 @@ ConstructionSystem.Config.SWEPJobs = nil  -- Configuré après le chargement des
 ConstructionSystem.Config.CrateAllowedJobs = nil  -- Configuré après le chargement des jobs
 
 ---------------------------------------------------------------------------
+-- DATABASE
+---------------------------------------------------------------------------
+ConstructionSystem.Config.DB = {
+    Host = "gmod-mysql",
+    Port = 3306,
+    User = "gmod_user",
+    Password = "GmodUserPass2025!",
+    Database = "gmod_construction",
+}
+
+---------------------------------------------------------------------------
 -- NET MESSAGES
 ---------------------------------------------------------------------------
 ConstructionSystem.NetMessages = {

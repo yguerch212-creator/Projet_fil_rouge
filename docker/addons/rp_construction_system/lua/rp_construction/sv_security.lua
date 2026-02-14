@@ -40,12 +40,9 @@ end
 hook.Add("CanTool", "Construction_RestrictTool", function(ply, tr, toolname)
     if toolname ~= "construction_select" then return end
 
-    local allowed = ConstructionSystem.Config.AllowedJobs
-    if allowed then
-        if not table.HasValue(allowed, ply:Team()) then
-            DarkRP.notify(ply, 1, 3, "Seuls certains jobs peuvent utiliser cet outil !")
-            return false
-        end
+    if not ConstructionSystem.Compat.CanUse(ply) then
+        ConstructionSystem.Compat.Notify(ply, 1, 3, "Seuls certains jobs peuvent utiliser cet outil !")
+        return false
     end
 end)
 

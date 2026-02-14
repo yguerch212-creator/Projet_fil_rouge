@@ -145,12 +145,12 @@ if SERVER then
                 for _, ent in ipairs(ents.FindByClass(cls)) do
                     if ent:GetNWBool("IsLoaded", false) and ent:GetParent() == vehicle then
                         ent:UnloadCrate()
-                        DarkRP.notify(ply, 0, 4, "Caisse dechargee !")
+                        ConstructionSystem.Compat.Notify(ply, 0, 4, "Caisse dechargee !")
                         return
                     end
                 end
             end
-            DarkRP.notify(ply, 1, 3, "Pas de caisse chargee sur ce vehicule !")
+            ConstructionSystem.Compat.Notify(ply, 1, 3, "Pas de caisse chargee sur ce vehicule !")
             return
         end
 
