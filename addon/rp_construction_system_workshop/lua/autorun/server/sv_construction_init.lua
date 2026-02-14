@@ -94,21 +94,24 @@ resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm.vmt")
 resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm.vtf")
 resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm_normal.vtf")
 
--- 11. Connexion MySQL
-hook.Add("InitPostEntity", "Construction_DBConnect", function()
-    timer.Simple(5, function()
-        print("[Construction] Connexion a MySQL...")
-        ConstructionSystem.DB.Connect()
+-- 11. Connexion MySQL (DarkRP only — pas besoin en Sandbox)
+if ConstructionSystem.Compat.IsDarkRP() then
+    hook.Add("InitPostEntity", "Construction_DBConnect", function()
+        timer.Simple(5, function()
+            print("[Construction] Connexion a MySQL...")
+            ConstructionSystem.DB.Connect()
+        end)
     end)
-end)
 
--- Fallback : si InitPostEntity déjà passé (restart container)
-timer.Simple(30, function()
-    if not ConstructionSystem.DB.IsConnected() then
-        print("[Construction] Connexion MySQL (delayed)...")
-        ConstructionSystem.DB.Connect()
-    end
-end)
+    timer.Simple(30, function()
+        if not ConstructionSystem.DB.IsConnected() then
+            print("[Construction] Connexion MySQL (delayed)...")
+            ConstructionSystem.DB.Connect()
+        end
+    end)
+else
+    print("[Construction] Mode Sandbox - MySQL desactive")
+end
 
 -- 11. Configuration des jobs SWEP après chargement DarkRP (skip si Sandbox)
 if not ConstructionSystem.Compat.IsDarkRP() then
