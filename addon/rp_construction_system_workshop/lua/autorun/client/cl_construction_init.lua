@@ -1,5 +1,6 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Initialisation Client
+    Compatible DarkRP + Sandbox
 ---------------------------------------------------------------------------]]
 
 include("rp_construction/sh_config.lua")
@@ -11,40 +12,49 @@ include("rp_construction/cl_placement.lua")
 include("rp_construction/cl_vehicles.lua")
 
 ---------------------------------------------------------------------------
--- SPAWNMENU (Q) — Onglet Utilities > Construction RP
+-- COMMANDES CONSOLE (fonctionnent sans SWEP)
 ---------------------------------------------------------------------------
 
-hook.Add("PopulateToolMenu", "Construction_ToolMenu", function()
-    spawnmenu.AddToolMenuOption("Utilities", "Construction RP", "construction_open", "Menu Construction", "", "", function(panel)
-        panel:ClearControls()
-        panel:Help("RP Construction System v" .. ConstructionSystem.Config.Version)
-        panel:Help("")
-
-        panel:Button("Ouvrir le Menu Construction", "construction_menu")
-        panel:Button("Vider la selection", "construction_clear")
-
-        panel:Help("")
-        panel:Help("=== Raccourcis (Outil de Construction) ===")
-        panel:Help("LMB : Selectionner / Deselectionner un prop")
-        panel:Help("RMB : Selection par zone (rayon)")
-        panel:Help("Shift+RMB : Ouvrir le menu blueprints")
-        panel:Help("R : Vider la selection / Decharger caisse")
-        panel:Help("Molette : Rotation (placement)")
-        panel:Help("Shift+Molette : Hauteur (placement)")
-        panel:Help("")
-        panel:Help("Console : construction_menu")
+-- Ouvrir le menu (déjà défini dans cl_menu.lua mais on s'assure)
+if not concommand.GetTable()["construction_menu"] then
+    concommand.Add("construction_menu", function()
+        ConstructionSystem.Menu.Open()
     end)
+end
+
+-- Vider la sélection
+concommand.Add("construction_clear", function()
+    net.Start("Construction_SelectClear")
+    net.SendToServer()
+end)
+
+-- Zone select à la position visée
+concommand.Add("construction_zone", function(ply, cmd, args)
+    local radius = tonumber(args[1]) or ConstructionSystem.ClientRadius or 500
+    local tr = ply:GetEyeTrace()
+    if not tr.Hit then return end
+
+    net.Start("Construction_SelectRadius")
+    net.WriteVector(tr.HitPos)
+    net.WriteUInt(math.Clamp(math.Round(radius), 50, 1000), 10)
+    net.SendToServer()
+end)
+
+-- Select prop visé (toggle)
+concommand.Add("construction_select", function(ply)
+    local tr = ply:GetEyeTrace()
+    if not tr.Hit or not IsValid(tr.Entity) then return end
+    if not ConstructionSystem.Config.AllowedClasses[tr.Entity:GetClass()] then return end
+
+    net.Start("Construction_SelectToggle")
+    net.WriteUInt(tr.Entity:EntIndex(), 13)
+    net.SendToServer()
 end)
 
 ---------------------------------------------------------------------------
--- CONTEXT MENU (C) — Bouton flottant en haut
+-- CONTEXT MENU (C) — Bouton Construction en haut
 ---------------------------------------------------------------------------
 
-hook.Add("ContextMenuCreated", "Construction_ContextMenu", function()
-    -- Le context menu est recréé à chaque session, ce hook se déclenche une fois
-end)
-
--- Ajouter un bouton au context menu quand il s'ouvre
 hook.Add("OnContextMenuOpen", "Construction_ContextBtn", function()
     if IsValid(ConstructionSystem._ctxBtn) then
         ConstructionSystem._ctxBtn:SetVisible(true)
@@ -77,13 +87,5 @@ hook.Add("OnContextMenuClose", "Construction_ContextBtn_Hide", function()
     end
 end)
 
----------------------------------------------------------------------------
--- COMMANDE CONSOLE : vider la sélection
----------------------------------------------------------------------------
-
-concommand.Add("construction_clear", function()
-    net.Start("Construction_SelectClear")
-    net.SendToServer()
-end)
-
 print("[Construction] Client initialise - v" .. ConstructionSystem.Config.Version)
+print("[Construction] Commandes: construction_menu | construction_select | construction_zone | construction_clear")

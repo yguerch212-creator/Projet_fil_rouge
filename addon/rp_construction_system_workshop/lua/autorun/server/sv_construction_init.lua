@@ -47,6 +47,8 @@ include("rp_construction/sv_security.lua")
 include("rp_construction/sv_vehicles.lua")
 
 -- 12. Fichiers client à envoyer
+-- STool (auto-sent by gmod but explicit is safer)
+AddCSLuaFile("weapons/gmod_tool/stools/construction.lua")
 AddCSLuaFile("rp_construction/cl_selection.lua")
 AddCSLuaFile("rp_construction/cl_ad2_decoder.lua")
 AddCSLuaFile("rp_construction/cl_blueprints.lua")
