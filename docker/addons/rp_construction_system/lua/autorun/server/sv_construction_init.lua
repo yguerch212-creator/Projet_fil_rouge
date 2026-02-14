@@ -1,6 +1,7 @@
 --[[-----------------------------------------------------------------------
     RP Construction System - Point d'entrée serveur
     Charge tous les modules dans le bon ordre
+    Compatible DarkRP + Sandbox (aucune détection gamemode nécessaire)
 ---------------------------------------------------------------------------]]
 
 -- 1. Fichier partagé
@@ -18,34 +19,34 @@ for _, msg in ipairs(ConstructionSystem.NetMessages) do
 end
 print("[Construction] " .. #ConstructionSystem.NetMessages .. " net messages enregistres")
 
--- 3. Module compatibilité DarkRP/Sandbox (en premier)
+-- 3. Module compatibilité (wrappers Notify, IsOwner, etc.)
 include("rp_construction/sv_compat.lua")
 
 -- 4. Module logging
 include("rp_construction/sv_logging.lua")
 
--- 4. Module base de données
+-- 5. Module base de données
 include("rp_construction/sv_database.lua")
 
--- 4. Module sélection
+-- 6. Module sélection
 include("rp_construction/sv_selection.lua")
 
--- 5. Module ghosts (fantômes)
+-- 7. Module ghosts (fantômes)
 include("rp_construction/sv_ghosts.lua")
 
--- 6. Module blueprints (save/load)
+-- 8. Module blueprints (save/load)
 include("rp_construction/sv_blueprints.lua")
 
--- 7. Module permissions & partage
+-- 9. Module permissions & partage
 include("rp_construction/sv_permissions.lua")
 
--- 8. Module sécurité & logging
+-- 10. Module sécurité
 include("rp_construction/sv_security.lua")
 
--- 9. Module véhicules (simfphys + LVS + Source)
+-- 11. Module véhicules (simfphys + LVS + Source)
 include("rp_construction/sv_vehicles.lua")
 
--- 9. Fichiers client à envoyer
+-- 12. Fichiers client à envoyer
 AddCSLuaFile("rp_construction/cl_selection.lua")
 AddCSLuaFile("rp_construction/cl_ad2_decoder.lua")
 AddCSLuaFile("rp_construction/cl_blueprints.lua")
@@ -53,8 +54,7 @@ AddCSLuaFile("rp_construction/cl_menu.lua")
 AddCSLuaFile("rp_construction/cl_placement.lua")
 AddCSLuaFile("rp_construction/cl_vehicles.lua")
 
--- 10. Ressources custom (fichiers dans garrysmod/download/, envoyés au client)
--- SWEP viewmodel Fortnite Builder (~2.3 MB total)
+-- 13. Ressources custom
 resource.AddFile("models/weapons/v_fortnite_builder.mdl")
 resource.AddFile("models/weapons/v_fortnite_builder.vvd")
 resource.AddFile("models/weapons/v_fortnite_builder.dx90.vtx")
@@ -66,7 +66,6 @@ resource.AddFile("models/weapons/w_fortnite_builder.phy")
 resource.AddFile("models/weapons/w_fortnite_builder.dx90.vtx")
 resource.AddFile("models/weapons/w_fortnite_builder.sw.vtx")
 resource.AddFile("models/weapons/w_fortnite_builder.dx80.vtx")
--- Textures du viewmodel (architect tools)
 resource.AddFile("materials/models/fortnitea31/weapons/misc/t_architecttools_d.vmt")
 resource.AddFile("materials/models/fortnitea31/weapons/misc/t_architecttools_d.vtf")
 resource.AddFile("materials/models/fortnitea31/weapons/misc/t_architecttools_d_wood.vmt")
@@ -77,7 +76,6 @@ resource.AddFile("materials/models/fortnitea31/weapons/misc/t_architecttools_d_m
 resource.AddFile("materials/models/fortnitea31/weapons/misc/t_architecttools_d_metal.vtf")
 resource.AddFile("materials/models/fortnitea31/weapons/misc/t_architecttools_n.vmt")
 resource.AddFile("materials/models/fortnitea31/weapons/misc/t_architecttools_n.vtf")
--- Caisse modèle + textures
 resource.AddFile("models/hts/ww2ns/props/dun/dun_wood_crate_03.mdl")
 resource.AddFile("models/hts/ww2ns/props/dun/dun_wood_crate_03.vvd")
 resource.AddFile("models/hts/ww2ns/props/dun/dun_wood_crate_03.phy")
@@ -85,7 +83,6 @@ resource.AddFile("models/hts/ww2ns/props/dun/dun_wood_crate_03.dx90.vtx")
 resource.AddFile("materials/models/hts/ww2ns/props/dun/dun_wood_crate_01_col.vmt")
 resource.AddFile("materials/models/hts/ww2ns/props/dun/dun_wood_crate_01_col.vtf")
 resource.AddFile("materials/models/hts/ww2ns/props/dun/dun_wood_crate_01_nml.vtf")
--- Petite caisse
 resource.AddFile("models/props_supplies/german/r_crate_pak50mm_stacked.mdl")
 resource.AddFile("models/props_supplies/german/r_crate_pak50mm_stacked.vvd")
 resource.AddFile("models/props_supplies/german/r_crate_pak50mm_stacked.phy")
@@ -94,65 +91,58 @@ resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm.vmt")
 resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm.vtf")
 resource.AddFile("materials/models/props_supplies/german/r_crate_pak50mm_normal.vtf")
 
--- 11. Connexion MySQL (DarkRP only — pas besoin en Sandbox)
-if ConstructionSystem.Compat.IsDarkRP() then
-    hook.Add("InitPostEntity", "Construction_DBConnect", function()
-        timer.Simple(5, function()
-            print("[Construction] Connexion a MySQL...")
-            ConstructionSystem.DB.Connect()
-        end)
-    end)
+---------------------------------------------------------------------------
+-- 14. CONNEXION MySQL (graceful — si mysqloo absent, on continue sans)
+---------------------------------------------------------------------------
 
-    timer.Simple(30, function()
-        if not ConstructionSystem.DB.IsConnected() then
+hook.Add("InitPostEntity", "Construction_DBConnect", function()
+    timer.Simple(5, function()
+        -- Vérifier si mysqloo est disponible AVANT de tenter la connexion
+        local ok = pcall(require, "mysqloo")
+        if not ok then
+            print("[Construction] MySQLOO non disponible - mode hors-ligne (normal en Sandbox)")
+            return
+        end
+        print("[Construction] Connexion a MySQL...")
+        ConstructionSystem.DB.Connect()
+    end)
+end)
+
+timer.Simple(30, function()
+    if ConstructionSystem.DB and not ConstructionSystem.DB.IsConnected() then
+        local ok = pcall(require, "mysqloo")
+        if ok then
             print("[Construction] Connexion MySQL (delayed)...")
             ConstructionSystem.DB.Connect()
         end
-    end)
-else
-    print("[Construction] Mode Sandbox - MySQL desactive")
-end
+    end
+end)
 
--- 11. Configuration des jobs SWEP après chargement DarkRP (skip si Sandbox)
-if not ConstructionSystem.Compat.IsDarkRP() then
-    print("[Construction] Mode Sandbox detecte - pas de restriction de jobs")
-    -- En Sandbox, donner le SWEP au spawn
-    hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
-        ply:Give("weapon_construction")
-    end)
-end
+---------------------------------------------------------------------------
+-- 15. DISTRIBUTION SWEP — fonctionne dans tous les gamemodes
+---------------------------------------------------------------------------
 
-if ConstructionSystem.Compat.IsDarkRP() then
+-- DarkRP: configurer les jobs après chargement
 hook.Add("loadCustomDarkRPItems", "Construction_SetupJobs", function()
-    -- Configure les jobs qui reçoivent le SWEP automatiquement
-    -- Par défaut: TEAM_BUILDER si il existe
     if TEAM_BUILDER and not ConstructionSystem.Config.SWEPJobs then
         ConstructionSystem.Config.SWEPJobs = {TEAM_BUILDER}
     end
-
-    -- Configure les jobs autorisés (même liste par défaut)
     if not ConstructionSystem.Config.AllowedJobs and ConstructionSystem.Config.SWEPJobs then
         ConstructionSystem.Config.AllowedJobs = ConstructionSystem.Config.SWEPJobs
     end
-
-    -- Configure les jobs autorisés pour les caisses (même liste par défaut)
     if not ConstructionSystem.Config.CrateAllowedJobs and ConstructionSystem.Config.SWEPJobs then
         ConstructionSystem.Config.CrateAllowedJobs = ConstructionSystem.Config.SWEPJobs
     end
-
     print("[Construction] Jobs SWEP: " .. (ConstructionSystem.Config.SWEPJobs and #ConstructionSystem.Config.SWEPJobs or 0) .. " job(s)")
-    print("[Construction] Jobs Caisses: " .. (ConstructionSystem.Config.CrateAllowedJobs and #ConstructionSystem.Config.CrateAllowedJobs or 0) .. " job(s)")
 end)
 
--- 12. Distribution SWEP au changement de job (DarkRP only)
+-- DarkRP: changement de job
 hook.Add("OnPlayerChangedTeam", "Construction_GiveSWEP", function(ply, oldTeam, newTeam)
     timer.Simple(0.5, function()
         if not IsValid(ply) then return end
-
         if ply:HasWeapon("weapon_construction") then
             ply:StripWeapon("weapon_construction")
         end
-
         local swepJobs = ConstructionSystem.Config.SWEPJobs
         if swepJobs then
             for _, team in ipairs(swepJobs) do
@@ -165,11 +155,16 @@ hook.Add("OnPlayerChangedTeam", "Construction_GiveSWEP", function(ply, oldTeam, 
     end)
 end)
 
--- 13. Distribution SWEP au spawn (DarkRP only)
+-- Spawn: donner le SWEP selon le contexte
+-- Si SWEPJobs est configuré (DarkRP) → vérifier le job
+-- Si SWEPJobs est nil (Sandbox ou pas de restriction) → donner à tout le monde
 hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
     local swepJobs = ConstructionSystem.Config.SWEPJobs
-    if not swepJobs then return end
-
+    if not swepJobs then
+        -- Pas de restriction de job → tout le monde reçoit le SWEP
+        ply:Give("weapon_construction")
+        return
+    end
     for _, team in ipairs(swepJobs) do
         if ply:Team() == team then
             ply:Give("weapon_construction")
@@ -177,7 +172,5 @@ hook.Add("PlayerLoadout", "Construction_Loadout", function(ply)
         end
     end
 end)
-
-end -- fin du if IsDarkRP()
 
 print("[Construction] Serveur initialise !")

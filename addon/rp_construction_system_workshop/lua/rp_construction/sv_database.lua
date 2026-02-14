@@ -17,8 +17,7 @@ ConstructionSystem.DB = ConstructionSystem.DB or {}
 function ConstructionSystem.DB.Connect()
     -- Vérifier que MySQLOO est installé
     if not pcall(require, "mysqloo") then
-        ErrorNoHaltWithStack("[Construction] ERREUR: MySQLOO n'est pas installé !\n")
-        ErrorNoHaltWithStack("[Construction] Placez gmsv_mysqloo_linux64.dll dans garrysmod/lua/bin/\n")
+        print("[Construction] MySQLOO non disponible - fonctionnement hors-ligne")
         return false
     end
 
