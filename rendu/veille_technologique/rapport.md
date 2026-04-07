@@ -5,7 +5,7 @@
 ---
 
 **Author:** [Student Name]  
-**Program:** B3 Cybersecurity — Efrei Bordeaux  
+**Program:** B3 Cybersecurity  
 **Date:** February 2026  
 **Competencies:** C28, C29, C30, C31
 
@@ -18,7 +18,7 @@
 3. [The Threat Landscape: Addon Backdoors and Supply Chain Attacks](#3-the-threat-landscape-addon-backdoors-and-supply-chain-attacks)
 4. [Zero Trust Principles Applied to Game Architecture](#4-zero-trust-principles-applied-to-game-architecture)
 5. [Server-Authoritative Design: The Only Real Defense](#5-server-authoritative-design-the-only-real-defense)
-6. [Case Study: Applying Zero Trust to the RP Construction System](#6-case-study-applying-zero-trust-to-the-rp-construction-system)
+6. [Case Study: Applying Zero Trust to a Real-World GMod Addon](#6-case-study-applying-zero-trust-to-a-real-world-gmod-addon)
 7. [Analysis and Hypotheses](#7-analysis-and-hypotheses)
 8. [Dissemination Strategy](#8-dissemination-strategy)
 9. [Conclusion and Recommendations](#9-conclusion-and-recommendations)
@@ -42,7 +42,7 @@ This report investigates:
 - The real-world threat of addon backdoors and supply chain attacks in gaming
 - How Zero Trust Architecture (ZTA), as defined by NIST SP 800-207, applies to game server design
 - The server-authoritative model as the practical implementation of Zero Trust in gaming
-- Concrete security measures from a real-world project (RP Construction System for Garry's Mod)
+- Concrete security measures demonstrated through a real-world capstone project
 
 ### 1.3 Scope
 
@@ -68,7 +68,7 @@ Sources were selected following three criteria: **relevance** to the gaming secu
 | **Security Research** | Stack Overflow analyses, Luctus Wiki (GMod security), CVE databases | EN | ⭐⭐ Community-verified |
 | **Incident Reports** | will.io (Workshop backdoors), gHacks, NotebookCheck | EN | ⭐⭐ Journalism |
 | **Community Forums** | Reddit (r/gmod, r/gamedev, r/netsec), Steam Community | EN | ⭐ Primary source |
-| **Open Source Tools** | GitHub (Backdoor Shield, gmod_exploit, CPE Anti-Backdoor) | EN | ⭐⭐ Code-verified |
+| **Open Source Tools** | GitHub (Backdoor Shield, CPE Anti-Backdoor) | EN | ⭐⭐ Code-verified |
 | **Industry Documentation** | Cloudflare Gaming, Palo Alto Networks (ZTA), Microsoft Zero Trust | EN | ⭐⭐⭐ Industry |
 | **French Sources** | ANSSI (Guide d'hygiène informatique), CNIL (RGPD gaming) | FR | ⭐⭐⭐ Government |
 | **German Sources** | BSI (Bundesamt für Sicherheit) — IT-Grundschutz game server | DE | ⭐⭐⭐ Government |
@@ -141,7 +141,7 @@ The most common pattern, as documented by the security community (Stack Overflow
 **Real-world example — KVacDoor** (documented on Stack Overflow, 2022):
 
 This widespread backdoor was embedded in popular GMod addons. When loaded, it:
-1. Contacted `kvac.cz` via HTTP
+1. Contacted an external domain via HTTP
 2. Downloaded and executed arbitrary Lua code
 3. Allowed the attacker to run console commands on the server
 4. Could access and modify server files
@@ -162,12 +162,12 @@ Developer → Workshop Upload → Auto-Update → Server Downloads → Execution
 |--------------|-------------|-------------------|
 | **Malicious upload** | Attacker publishes a new addon with hidden backdoor | Common; detected by tools like Backdoor Shield |
 | **Account compromise** | Legitimate developer's account is hijacked; malware pushed as "update" | Downfall mod incident (December 2023) — gHacks |
-| **Delayed payload** | Addon is clean initially, malicious update pushed later | KVacDoor pattern — initially useful addon |
+| **Delayed payload** | Addon is clean initially, malicious update pushed later | KVacDoor pattern |
 | **Dependency confusion** | Addon requires another addon that is compromised | Less common in GMod but documented |
 | **Auto-update exploitation** | Workshop auto-downloads updates without review | will.io (2014): "Auto-updating is bad news" |
 
 **The People Playground Incident (2025):**
-In February 2026, the game People Playground had to **disable its entire Steam Workshop** after a malicious mod was uploaded that deleted competing mods and save files (NotebookCheck, 2025). This demonstrates that the threat is current and ongoing.
+In early 2025, the game People Playground had to **disable its entire Steam Workshop** after a malicious mod was uploaded that deleted competing mods and save files (NotebookCheck, 2025). This demonstrates that the threat is current and ongoing.
 
 ### 3.4 Scale of the Problem
 
@@ -177,7 +177,7 @@ In February 2026, the game People Playground had to **disable its entire Steam W
 | Known GMod backdoor families | 10+ (KVacDoor, Omega, BuriedSelfEsteem, etc.) | Backdoor Shield GitHub |
 | Servers affected by GMod backdoors | Thousands (estimated) | Community reports |
 | Detection tools available | 3 major (Backdoor Shield, CPE, SNTE) | Steam Workshop |
-| People Playground users affected | ~50 (before takedown) | Steam Community |
+| People Playground users affected | ~50+ (before takedown) | Steam Community |
 
 ### 3.5 Why Traditional Security Fails
 
@@ -223,7 +223,7 @@ NIST Zero Trust                    Game Server Zero Trust
 └──────┬───────┘                  └──────────┬───────────────┘
        │                                      │
 ┌──────┴───────┐                  ┌──────────┴───────────────┐
-│ Policy       │ ←───────────→   │ Net message validation   │
+│ Policy       │ ←───────────→   │ Net message validation    │
 │ Enforcement  │                  │ (input sanitization)      │
 │ Point        │                  │                           │
 └──────────────┘                  └───────────────────────────┘
@@ -237,8 +237,8 @@ In game development, this principle is expressed as: **"The client is in the han
 |---------------------|---------------------------|
 | "I want to select this prop" | Is the prop valid? Does the player own it? Is the player the right job? Rate limit OK? |
 | "Here's my blueprint data" | Are all entity classes allowed? Is the prop count within limits? Are positions valid? |
-| "Materialize this ghost" | Does the ghost exist? Does the player have an active crate? Does the crate have materials? |
-| "Load this crate onto a vehicle" | Is the vehicle valid? Is the crate nearby? Is there cargo space? |
+| "Materialize this object" | Does the target exist? Does the player have authorization? Are resources available? |
+| "Load this object onto a vehicle" | Is the vehicle valid? Is the object nearby? Is there capacity? |
 
 Every single message from the client must be treated as **potentially malicious** — even from authenticated, legitimate players.
 
@@ -262,10 +262,10 @@ The server-authoritative model implements Zero Trust by design:
 ```
 CLIENT                          SERVER
   │                               │
-  ├── "Select prop #42" ────────→ │
-  │                               ├── IsValid(prop)?
-  │                               ├── IsOwner(player, prop)?
-  │                               ├── IsAllowedJob(player)?
+  ├── "Select entity #42" ──────→ │
+  │                               ├── IsValid(entity)?
+  │                               ├── IsOwner(player, entity)?
+  │                               ├── IsAllowedRole(player)?
   │                               ├── RateLimit(player)?
   │                               ├── ✅ All checks pass
   │ ←── "Selection confirmed" ────┤
@@ -278,10 +278,10 @@ CLIENT                          SERVER
   │                               ├── ✅ Data is clean
   │ ←── "Here's the safe data" ───┤
   │                               │
-  │   (Client saves locally)      │
+  │   (Client stores locally)     │
 ```
 
-Key principle: **the server serializes the data, not the client**. The client never sends blueprint data to the server — it requests the server to read the props and create the blueprint. This prevents injection of malicious entity classes.
+Key principle: **the server serializes the data, not the client**. The client never sends blueprint data to the server — it requests the server to read the objects and create the blueprint. This prevents injection of malicious entity classes.
 
 ### 5.3 Defense in Depth Layers
 
@@ -289,7 +289,7 @@ Key principle: **the server serializes the data, not the client**. The client ne
 Layer 1: Network Level
 ├── Firewall (UFW): only required ports open
 ├── Docker network isolation
-└── No direct MySQL access from Internet
+└── No direct database access from Internet
 
 Layer 2: Protocol Level
 ├── Rate limiting (60 req/min per player)
@@ -299,7 +299,7 @@ Layer 2: Protocol Level
 Layer 3: Application Level
 ├── Server-side validation of ALL inputs
 ├── Entity class whitelist + blacklist
-├── CPPI ownership verification
+├── Ownership verification
 └── Prepared statements (SQL injection prevention)
 
 Layer 4: Infrastructure Level
@@ -323,20 +323,20 @@ Layer 5: Monitoring Level
 | **Counter-Strike 2** | Server-authoritative | VAC + kernel-level | ⚠️ Medium (trusts VAC) |
 | **Fortnite** | Server-authoritative | EasyAntiCheat | ⚠️ Medium |
 | **Minecraft (Paper)** | Server-authoritative | Plugin-based | Depends on config |
-| **Our project (RP Construction System)** | Fully server-authoritative | Built-in validation | ✅ High (for its scope) |
+| **Capstone project** | Fully server-authoritative | Built-in validation | ✅ High (for its scope) |
 
 ---
 
-## 6. Case Study: Applying Zero Trust to the RP Construction System
+## 6. Case Study: Applying Zero Trust to a Real-World GMod Addon
 
 ### 6.1 Project Context
 
-The RP Construction System is a Garry's Mod addon developed as part of a Cybersecurity B3 capstone project. It runs on a containerized infrastructure (Docker) with a MySQL database, and is published on the Steam Workshop.
+As part of this cybersecurity curriculum, a Garry's Mod addon was developed and deployed on a containerized infrastructure (Docker + MySQL). The addon was published on the Steam Workshop and is fully operational on a live server. This case study examines how Zero Trust principles were applied in practice.
 
 ### 6.2 Zero Trust Implementation
 
-| NIST Tenet | Implementation in Project |
-|------------|--------------------------|
+| NIST Tenet | Implementation |
+|------------|---------------|
 | **Resources** | Every ghost, crate, and prop is a tracked server entity |
 | **Secured communication** | 18 net messages, all validated server-side |
 | **Per-session access** | Each action independently verified (no cached trust) |
@@ -347,14 +347,14 @@ The RP Construction System is a Garry's Mod addon developed as part of a Cyberse
 
 ### 6.3 Specific Security Measures Against Addon Threats
 
-| Threat | How Our Addon Prevents It |
-|--------|--------------------------|
+| Threat | Mitigation |
+|--------|-----------|
 | **Backdoor via RunString** | No `RunString` or `CompileString` used anywhere in the codebase |
 | **Remote code execution** | No `http.Fetch` to external servers for code execution |
 | **Entity injection** | Strict `AllowedClasses` whitelist + `BlacklistedEntities` pattern matching |
 | **Net message flooding** | Global rate limit (60/min) + per-action cooldowns |
 | **SQL injection** | 100% prepared statements via MySQLOO |
-| **Privilege escalation** | SuperAdmin-only admin commands, job-based SWEP access |
+| **Privilege escalation** | SuperAdmin-only admin commands, role-based SWEP access |
 | **Data exfiltration** | Blueprints stored client-side only; no sensitive data on server |
 
 ### 6.4 Infrastructure Security (Docker)
@@ -363,17 +363,27 @@ The Docker containerization adds an additional Zero Trust layer:
 
 | Measure | Effect |
 |---------|--------|
-| Container isolation | GMod process cannot access host filesystem |
+| Container isolation | Game server process cannot access host filesystem |
 | Resource limits (3 GB RAM, 2 CPU) | Prevents resource exhaustion attacks |
 | No `--privileged` flag | Prevents container escape |
-| Internal Docker network for MySQL | Database not exposed to Internet |
+| Internal Docker network for database | Database not exposed to Internet |
 | Bind mounts (read-only where possible) | Minimizes attack surface |
+
+### 6.5 Incident Encountered and Resolved
+
+During development, a file intended for testing purposes (`sv_admin_setup.lua`) was accidentally included in the public Workshop release. This file automatically granted superadmin privileges on any server running the addon — a severe security vulnerability. Upon discovery:
+
+1. The file was immediately removed from the public distribution
+2. The Workshop upload was corrected
+3. A pre-upload checklist was established to prevent recurrence
+
+This incident reinforces a key lesson: **development-only code must never reach production**, and supply chain hygiene applies to the developer's own publishing pipeline.
 
 ---
 
 ## 7. Analysis and Hypotheses
 
-### 7.1 Hypothesis 1: Most game server compromises come from trusted addons, not external attacks
+### 7.1 Hypothesis 1: Most game server compromises come from trusted addons, not external network attacks
 
 **Evidence:**
 - The majority of documented GMod server breaches involve backdoored addons, not network-level attacks (will.io, 2014; Backdoor Shield, 2020)
@@ -396,7 +406,7 @@ The Docker containerization adds an additional Zero Trust layer:
 **Evidence:**
 - Docker containers provide process isolation at the kernel level
 - Resource limits prevent denial-of-service from within the container
-- A compromised GMod addon in a container cannot access the host system or other containers
+- A compromised addon in a container cannot access the host system or other containers
 
 **Conclusion:** Running game servers in containers with strict resource limits and network policies is a **best practice** that should be standard, not optional.
 
@@ -472,7 +482,7 @@ Each finding from the technology watch is:
 
 4. **Containerization provides an essential additional security layer** by limiting the blast radius of any compromise.
 
-5. **The RP Construction System project demonstrates that Zero Trust can be implemented in a real addon** without sacrificing functionality or user experience.
+5. **Practical implementation confirms the theory.** The capstone project demonstrates that Zero Trust can be applied in a real addon without sacrificing functionality or user experience.
 
 ### 9.2 Recommendations — C31.2
 
@@ -548,4 +558,4 @@ Each finding from the technology watch is:
 
 ---
 
-*This report was produced as part of the B3 Cybersecurity curriculum at Efrei Bordeaux. Sources are multilingual (English, French, German), dated, and verifiable. AI tools were used as research accelerators with full disclosure (see §2.3).*
+*This report was produced as part of a B3 Cybersecurity curriculum. Sources are multilingual (English, French, German), dated, and verifiable. AI tools were used as research accelerators with full disclosure (see §2.3).*
